@@ -1,4 +1,4 @@
-from xyz.tokenizer.tokens import Token, TokenType
+from xyz.tokenizer.tokens import Token, TokenType, keywords
 
 
 def peek(file) -> str:
@@ -25,16 +25,7 @@ def tokenize(file) -> list[Token] | None:
             case _ if char.isspace():
                 start += 1
             case _ if char.isalpha() or char == "_":
-                ident: str = char
-                end: int = start + 1
-                while True:
-                    nextchar: str = peek(file)
-                    if nextchar.isalnum() or nextchar == "_":
-                        ident += file.read(1)
-                        end += 1
-                    else:
-                        break
-                report((TokenType.IDENT, (start, end), ident))
+                report(tokenize_ident(file, start, char))
             case _ if char.isdecimal():
                 report(tokenize_number(file, start, char))
             case '.':
@@ -43,12 +34,42 @@ def tokenize(file) -> list[Token] | None:
                     report(tokenize_number(file, start, char))
                 elif nextchar == '.':
                     file.read(1)
-                    report(((TokenType.OP_CONCAT, (start, start+2), None)))
+                    if peek(file) == '.':
+                        file.read(1)
+                        report((TokenType.ELLIPSIS, (start, start+3), None))
+                    else:
+                        report(((TokenType.OP_CONCAT, (start, start+2), None)))
                 else:
                     report((TokenType.DOT, (start, start+1), None))
                     start += 1
             case "'" | '"':
                 report(tokenize_string(file, start, char))
+            case ';':
+                report((TokenType.SEMICOLON, (start, start+1), None))
+            case ',':
+                report((TokenType.COMMA, (start, start+1), None))
+            case '=':
+                if peek(file) == '=':
+                    file.read(1)
+                    report((TokenType.OP_EQUAL, (start, start+2), None))
+                else:
+                    report((TokenType.SET, (start, start+1), None))
+            case ':':
+                report((TokenType.COLON, (start, start+1), None))
+            case '(':
+                report((TokenType.PAREN_OPEN, (start, start+1), None))
+            case ')':
+                report((TokenType.PAREN_CLOSE, (start, start+1), None))
+            case '[':
+                report((TokenType.BRACKET_OPEN, (start, start+1), None))
+            case ']':
+                report((TokenType.BRACKET_CLOSE, (start, start+1), None))
+            case '{':
+                report((TokenType.BRACE_OPEN, (start, start+1), None))
+            case '}':
+                report((TokenType.BRACE_CLOSE, (start, start+1), None))
+            case '+':
+                report((TokenType.OP_PLUS, (start, start+1), None))
             case '-':
                 if peek(file) == '-':
                     # handle comments
@@ -57,10 +78,69 @@ def tokenize(file) -> list[Token] | None:
                         start += 1
                 else:
                     report((TokenType.OP_MINUS, (start, start + 1), None))
+            case '*':
+                if peek(file) == '*':
+                    file.read(1)
+                    report((TokenType.OP_EXP, (start, start+2), None))
+                else:
+                    report((TokenType.OP_MUL, (start, start+1), None))
+            case '/':
+                if peek(file) == '/':
+                    file.read(1)
+                    report((TokenType.OP_FLOORDIV, (start, start+2), None))
+                else:
+                    report((TokenType.OP_DIV, (start, start+1), None))
+            case '%':
+                report((TokenType.OP_MOD, (start, start+1), None))
+            case '&':
+                report((TokenType.OP_AND, (start, start+1), None))
+            case '^':
+                report((TokenType.OP_XOR, (start, start+1), None))
+            case '|':
+                report((TokenType.OP_OR, (start, start+1), None))
+            case '<':
+                nextchar: str = peek(file)
+                if nextchar == '<':
+                    report((TokenType.OP_LSHIFT, (start, start+2), None))
+                elif nextchar == '=':
+                    report((TokenType.OP_LEQ, (start, start+2), None))
+                else:
+                    report((TokenType.OP_LESS, (start, start+1), None))
+            case '>':
+                nextchar: str = peek(file)
+                if nextchar == '>':
+                    report((TokenType.OP_RSHIFT, (start, start+2), None))
+                elif nextchar == '=':
+                    report((TokenType.OP_GEQ, (start, start+2), None))
+                else:
+                    report((TokenType.OP_GREATER, (start, start+1), None))
+            case '#':
+                report((TokenType.OP_SIZE, (start, start+1), None))
+            case '!':
+                if peek(file) == '=':
+                    report((TokenType.OP_NEQ, (start, start+2), None))
+                else:
+                    report((TokenType.OP_NOT, (start, start+2), None))
             case _:
                 print("Bad token @ char %s! (%s)" % (start, char))
                 return None
     return tokens
+
+
+def tokenize_ident(file, start, char) -> Token:
+    ident: str = char
+    end: int = start + 1
+    while True:
+        nextchar: str = peek(file)
+        if nextchar.isalnum() or nextchar == "_":
+            ident += file.read(1)
+            end += 1
+        else:
+            break
+    if ident in keywords.keys():
+        return (keywords[ident], (start, end), None)
+    else:
+        return (TokenType.IDENT, (start, end), ident)
 
 
 def tokenize_number(file, start, char) -> Token:

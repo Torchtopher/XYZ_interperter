@@ -4,3 +4,6 @@ identifiers go 1 1.1 1. .1 . .. ... ..1... around    -       and - around
 'so is this'
 'this string\nhasn\'t got any\
 \\\"escape sequences\" in it...'
+
+myvar = 1
+myvar == 2

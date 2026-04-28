@@ -64,5 +64,30 @@ class TokenType(Enum):
     OP_NOT = 59  # !
 
 
+keywords = {
+    "and": TokenType.KEYWORD_AND,
+    "break": TokenType.KEYWORD_BREAK,
+    "const": TokenType.KEYWORD_CONST,
+    "do": TokenType.KEYWORD_DO,
+    "else": TokenType.KEYWORD_ELSE,
+    "elseif": TokenType.KEYWORD_ELSEIF,
+    "end": TokenType.KEYWORD_END,
+    "false": TokenType.KEYWORD_FALSE,
+    "for": TokenType.KEYWORD_FOR,
+    "function": TokenType.KEYWORD_FUNCTION,
+    "if": TokenType.KEYWORD_IF,
+    "in": TokenType.KEYWORD_IN,
+    "let": TokenType.KEYWORD_LET,
+    "nil": TokenType.KEYWORD_NIL,
+    "not": TokenType.KEYWORD_NOT,
+    "or": TokenType.KEYWORD_OR,
+    "repeat": TokenType.KEYWORD_REPEAT,
+    "return": TokenType.KEYWORD_RETURN,
+    "then": TokenType.KEYWORD_THEN,
+    "true": TokenType.KEYWORD_TRUE,
+    "until": TokenType.KEYWORD_UNTIL,
+    "while": TokenType.KEYWORD_WHILE,
+}
+
 type Span = tuple[int, int]
 type Token = tuple[TokenType, Span, str | None]
