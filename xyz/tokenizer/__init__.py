@@ -16,11 +16,13 @@ def tokenize(file) -> list[Token] | None:
                 ident: str = char
                 end: int = start + 1
                 while True:
+                    pos: int = file.tell()
                     nextchar: str = file.read(1)
-                    end += 1
                     if nextchar.isalnum() or nextchar == "_":
                         ident += nextchar
+                        end += 1
                     else:
+                        file.seek(pos)
                         break
                 tokens.append((TokenType.IDENT, (start, end, ident)))
                 start = end
