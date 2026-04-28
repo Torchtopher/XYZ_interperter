@@ -120,7 +120,7 @@ def tokenize(file) -> list[Token] | None:
                 if peek(file) == '=':
                     report((TokenType.OP_NEQ, (start, start+2), None))
                 else:
-                    report((TokenType.OP_NOT, (start, start+2), None))
+                    report((TokenType.OP_NOT, (start, start+1), None))
             case _:
                 print("Bad token @ char %s! (%s)" % (start, char))
                 return None
