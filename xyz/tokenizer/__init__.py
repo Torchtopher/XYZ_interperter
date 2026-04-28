@@ -1,4 +1,5 @@
 from xyz.tokenizer.tokens import Token, TokenType, keywords
+from xyz.tokenizer.error import InvalidTokenError
 
 
 def peek(file) -> str:
@@ -8,7 +9,7 @@ def peek(file) -> str:
     return nextchar
 
 
-def tokenize(file) -> list[Token] | None:
+def tokenize(file) -> list[Token] | InvalidTokenError:
     tokens: list[Token] = []
     start: int = 0
 
@@ -122,8 +123,7 @@ def tokenize(file) -> list[Token] | None:
                 else:
                     report((TokenType.OP_NOT, (start, start+1), None))
             case _:
-                print("Bad token @ char %s! (%s)" % (start, char))
-                return None
+                return InvalidTokenError((start, start+1), file, char)
     return tokens
 
 

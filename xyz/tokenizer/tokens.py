@@ -1,4 +1,5 @@
 from enum import Enum
+from xyz.error import Span
 
 
 class TokenType(Enum):
@@ -89,5 +90,4 @@ keywords = {
     "while": TokenType.KEYWORD_WHILE,
 }
 
-type Span = tuple[int, int]
 type Token = tuple[TokenType, Span, str | None]
