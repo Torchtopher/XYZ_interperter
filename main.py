@@ -1,6 +1,8 @@
 from sys import argv
 from os.path import isfile
 
+from xyz.tokenizer import tokenize
+
 
 def main():
     if len(argv) < 2:
@@ -9,11 +11,10 @@ def main():
         print("File %s does not exist!" % argv[1])
     else:
         with open(argv[1], "r") as file:
-            chunk = file.read()
-            print("## IMPLEMENTATION STATUS - 0/3")
-            print("## PRINTING CHUNK AS-IS")
+            print("## IMPLEMENTATION STATUS - 1/3 (WIP)")
+            print("## PRINTING TOKENIZER OUTPUT")
             print()
-            print(chunk)
+            print(tokenize(file))
             file.close()
 
 
