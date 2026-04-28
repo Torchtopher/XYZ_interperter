@@ -49,6 +49,10 @@ def tokenize(file) -> list[Token] | None:
                 else:
                     tokens.append((TokenType.DOT, (start, start+1), None))
                     start += 1
+            case "'" | '"':
+                string: tuple[int, Token] = tokenize_string(file, start, char)
+                start = string[0]
+                tokens.append(string[1])
             case '-':
                 if peek(file) == '-':
                     # handle comments
@@ -60,7 +64,7 @@ def tokenize(file) -> list[Token] | None:
                         (TokenType.OP_MINUS, (start, start + 1), None))
                     start += 1
             case _:
-                print("Bad token @ char %s!" % start)
+                print("Bad token @ char %s! (%s)" % (start, char))
                 return None
     return tokens
 
@@ -82,3 +86,49 @@ def tokenize_number(file, start, char) -> tuple[int, Token]:
             break
     return (end,
             (TokenType.FLOAT if frac else TokenType.INT, (start, end), final))
+
+
+def tokenize_string(file, start, char) -> tuple[int, Token]:
+    final: str = ""
+    escape: bool = False
+    end: int = start+1
+    skipwhite: bool = False
+    while True:
+        nextchar: str = file.read(1)
+        end += 1
+        if skipwhite:
+            if not nextchar.isspace():
+                skipwhite = False
+        elif escape:
+            escape = False
+            match nextchar:
+                case 'a':
+                    final += '\a'
+                case 'b':
+                    final += '\b'
+                case 'f':
+                    final += '\f'
+                case 'n' | '\n':
+                    final += '\n'
+                case 'r':
+                    final += '\r'
+                case 't':
+                    final += '\t'
+                case 'v':
+                    final += '\v'
+                case '\\':
+                    final += '\\'
+                case '"':
+                    final += '"'
+                case "'":
+                    final += "'"
+                case 'z':
+                    skipwhite = True
+                # todo?: \xXX, \ddd, \u{XXX}
+        elif nextchar == char:
+            break
+        elif nextchar == '\\':
+            escape = True
+        else:
+            final += nextchar
+    return (end, (TokenType.STRING, (start, end), final))
