@@ -31,6 +31,24 @@ def tokenize(file) -> list[Token] | None:
                         break
                 tokens.append((TokenType.IDENT, (start, end), ident))
                 start = end
+            case _ if char.isdecimal():
+                num: tuple[int, Token] = tokenize_number(file, start, char)
+                start = num[0]
+                tokens.append(num[1])
+            case '.':
+                nextchar: str = peek(file)
+                if nextchar.isdecimal():
+                    num: tuple[int, Token] = tokenize_number(file, start, char)
+                    start = num[0]
+                    tokens.append(num[1])
+                elif nextchar == '.':
+                    file.read(1)
+                    tokens.append(
+                        (TokenType.OP_CONCAT, (start, start+2), None))
+                    start += 2
+                else:
+                    tokens.append((TokenType.DOT, (start, start+1), None))
+                    start += 1
             case '-':
                 if peek(file) == '-':
                     # handle comments
@@ -45,3 +63,22 @@ def tokenize(file) -> list[Token] | None:
                 print("Bad token @ char %s!" % start)
                 return None
     return tokens
+
+
+def tokenize_number(file, start, char) -> tuple[int, Token]:
+    frac: bool = char == '.'
+    final: str = char
+    end: int = start + 1
+    while True:
+        nextchar: str = peek(file)
+        if not frac and nextchar == '.':
+            frac = True
+            final += file.read(1)
+            end += 1
+        elif nextchar.isdecimal():
+            final += file.read(1)
+            end += 1
+        else:
+            break
+    return (end,
+            (TokenType.FLOAT if frac else TokenType.INT, (start, end), final))
