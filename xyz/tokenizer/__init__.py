@@ -1,7 +1,8 @@
 from xyz.tokenizer.tokens import Token, TokenType, keywords
 from xyz.error import Error
 from xyz.tokenizer.error import (
-    InvalidTokenError, InvalidEscapeError, StringNewlineError)
+    InvalidTokenError, InvalidEscapeError,
+    StringNewlineError, UnexpectedEndError)
 
 
 def peek(file) -> str:
@@ -179,6 +180,8 @@ def tokenize_string(file, start, char) -> Token:
     skipwhite: bool = False
     while True:
         nextchar: str = file.read(1)
+        if nextchar == '':
+            return UnexpectedEndError((end, end+1), file)
         end += 1
         if skipwhite:
             if not nextchar.isspace():
@@ -210,13 +213,13 @@ def tokenize_string(file, start, char) -> Token:
                     skipwhite = True
                 # todo?: \xXX, \ddd, \u{XXX}
                 case _:
-                    return InvalidEscapeError((start, end), file, nextchar)
+                    return InvalidEscapeError((end-2, end), file, nextchar)
         elif nextchar == char:
             break
         elif nextchar == '\\':
             escape = True
         elif nextchar == '\n':
-            return StringNewlineError((start, end), file, nextchar)
+            return StringNewlineError((end-2, end), file)
         else:
             final += nextchar
     return (TokenType.STRING, (start, end), final)

@@ -55,6 +55,6 @@ class Error:
                                  RED if is_error else WHITE), line[c])
                 under += style((BOLD, RED), "~") if is_error else (
                     line[c] if line[c].isspace() else " ")
-            print(style((NORMAL, GRAY), str(i)), printed)
-            print(" "*len(str(i)), under)
+            print(style((NORMAL, GRAY), str(i+1)), printed)
+            print(" "*len(str(i+1)), under)
         print("-"*32)

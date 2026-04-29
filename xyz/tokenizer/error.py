@@ -26,3 +26,8 @@ class InvalidEscapeError(Error):
 class StringNewlineError(Error):
     def message(self) -> str:
         return "Strings cannot contain unescaped newlines"
+
+
+class UnexpectedEndError(Error):
+    def message(self) -> str:
+        return "Unexpected end of file (did you forget to close a string?)"
