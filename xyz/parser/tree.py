@@ -6,9 +6,9 @@ from enum import Enum
 type File = Expression
 type Expression = (LitNil | LitTrue | LitFalse | LitInt | LitFloat | 
                    LitString | LitTable | BinaryExpression | UnaryExpression | Var) # | FunctionCall | Lambda
-type LitNil = Literal[None]
-type LitTrue = Literal[True]
-type LitFalse = Literal[False]
+type LitNil = Literal[None] # You have to write this as None instead of LitNil for some reason
+type LitTrue = Literal[True] # same
+type LitFalse = Literal[False] # same
 type LitInt = int
 type LitFloat = float
 type LitString = str

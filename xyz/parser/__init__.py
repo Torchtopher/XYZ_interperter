@@ -24,5 +24,5 @@ def parse(source: TextIOWrapper, tokens: Iterator[Token]) -> node.File | Error:
     try:
         file: node.File = parse_expression(tokens)
         expect(TokenType.EOF)
-    except WrongTokenError as error: return error
+    except Error as error: return error
     return file
