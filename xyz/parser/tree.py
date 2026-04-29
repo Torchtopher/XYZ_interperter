@@ -12,10 +12,10 @@ type LitFalse = Literal[False]
 type LitInt = int
 type LitFloat = float
 type LitString = str
-type Var = tuple[str]
-type LitTable = dict[Expression, Expression]
+type LitTable = list[tuple[Expression, Expression]]
 type BinaryExpression = tuple[BinExpType, Expression, Expression]
 type UnaryExpression = tuple[UnExpType, Expression]
+type Var = tuple[str]
 
 class BinExpType(Enum):
     INDEX = 0
