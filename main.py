@@ -1,7 +1,7 @@
 from sys import argv
 from os.path import isfile
 
-from xyz.tokenizer import tokenize
+from xyz.tokenizer import tokenize_all
 from xyz.tokenizer.error import Error
 
 
@@ -15,7 +15,7 @@ def main():
             print("## IMPLEMENTATION STATUS - 1/3 (WIP)")
             print("## PRINTING TOKENIZER OUTPUT")
             print()
-            result = tokenize(file)
+            result = tokenize_all(file)
             if isinstance(result, Error):
                 result.print()
             else:

@@ -1,5 +1,4 @@
-from xyz.error.color import (style, NORMAL, BOLD, BLACK, RED, GREEN,
-                             YELLOW, BLUE, MAGENTA, CYAN, WHITE)
+from xyz.error.color import (style, NORMAL, BOLD, RED, WHITE, GRAY)
 from io import TextIOWrapper
 
 type Span = tuple[int, int]
@@ -30,7 +29,7 @@ class Error:
         self.file.seek(0)
         txt = self.file.read()
         first: list[str] = txt[:self.span[0]+1].splitlines(keepends=True)
-        last: list[str] = txt[:self.span[1]+1].splitlines(keepends=True)
+        last: list[str] = txt[:self.span[1]].splitlines(keepends=True)
         span: LineSpan = (
             (len(first), len(first[-1])-1), (len(last), len(last[-1])-1))
         self.file.seek(original_pos)
@@ -44,19 +43,18 @@ class Error:
         print(self.message())
         print()
         lines: list[str] = self.text.splitlines()
-        for i in range(line_span[0][0]-1, line_span[1][0] - (
-                1 if line_span[1][1] == 0 else 0)):
+        for i in range(line_span[0][0]-1, line_span[1][0]):
             line: str = lines[i]
             start: int = line_span[0][1]-1 if i == line_span[0][0]-1 else 0
             end: int = line_span[1][1] if i == line_span[1][0]-1 else len(line)
             printed: str = ""
             under: str = ""
-            for i in range(len(line)):
-                is_error: bool = i in range(start, end)
+            for c in range(len(line)):
+                is_error: bool = c in range(start, end)
                 printed += style((BOLD if is_error else NORMAL,
-                                 RED if is_error else WHITE), line[i])
+                                 RED if is_error else WHITE), line[c])
                 under += style((BOLD, RED), "~") if is_error else (
-                    line[i] if line[i].isspace() else " ")
-            print(style((NORMAL, 90), str(i)), printed)
+                    line[c] if line[c].isspace() else " ")
+            print(style((NORMAL, GRAY), str(i)), printed)
             print(" "*len(str(i)), under)
         print("-"*32)

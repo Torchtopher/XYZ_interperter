@@ -65,7 +65,7 @@ class TokenType(Enum):
     OP_NOT = 59  # !
 
 
-keywords = {
+keywords: dict[str, TokenType] = {
     "and": TokenType.KEYWORD_AND,
     "break": TokenType.KEYWORD_BREAK,
     "const": TokenType.KEYWORD_CONST,
