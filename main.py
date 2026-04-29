@@ -2,6 +2,7 @@ from sys import argv
 from os.path import isfile
 
 from xyz.tokenizer import tokenize_all
+from xyz.parser import parse
 from xyz.error import Error
 
 
@@ -12,14 +13,18 @@ def main():
         print("File %s does not exist!" % argv[1])
     else:
         with open(argv[1], "r") as file:
-            print("## IMPLEMENTATION STATUS - 1/3")
-            print("## PRINTING TOKENIZER OUTPUT")
+            print("## IMPLEMENTATION STATUS - 2/3 (WIP)")
+            print("## PRINTING PARSER OUTPUT")
             print()
             result = tokenize_all(file)
             if isinstance(result, Error):
                 result.print()
             else:
-                print(result)
+                tree = parse(file, result.__iter__())
+                if isinstance(tree, Error):
+                    tree.print()
+                else:
+                    print(tree)
             file.close()
 
 
