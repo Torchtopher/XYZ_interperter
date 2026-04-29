@@ -6,7 +6,10 @@ type LineCol = tuple[int, int]
 type LineSpan = tuple[LineCol, LineCol]
 
 
-class Error:
+# An error in the XYZ pipeline.
+# Should primarily be handled as values, but can be thrown as exceptions if automatic propagation is needed.
+
+class Error(Exception):
     span: Span
     file: TextIOWrapper
     text: str
