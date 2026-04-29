@@ -2,7 +2,7 @@ from sys import argv
 from os.path import isfile
 
 from xyz.tokenizer import tokenize_all
-from xyz.tokenizer.error import Error
+from xyz.error import Error
 
 
 def main():
@@ -12,7 +12,7 @@ def main():
         print("File %s does not exist!" % argv[1])
     else:
         with open(argv[1], "r") as file:
-            print("## IMPLEMENTATION STATUS - 1/3 (WIP)")
+            print("## IMPLEMENTATION STATUS - 1/3")
             print("## PRINTING TOKENIZER OUTPUT")
             print()
             result = tokenize_all(file)

@@ -3,6 +3,7 @@ from xyz.error import Error
 from xyz.tokenizer.error import (
     InvalidTokenError, InvalidEscapeError,
     StringNewlineError, UnexpectedEndError)
+from types import GeneratorType
 
 
 def peek(file) -> str:
@@ -16,7 +17,7 @@ def tokenize_all(file) -> list[Token] | Error:
     tokens: list[Token] = []
     start: int = 0
 
-    def tokenize(file) -> Token | Error:
+    def tokenize(file) -> GeneratorType[Token | Error]:
         nonlocal start
 
         while True:
@@ -173,7 +174,7 @@ def tokenize_number(file, start, char) -> Token:
     return (TokenType.FLOAT if frac else TokenType.INT, (start, end), final)
 
 
-def tokenize_string(file, start, char) -> Token:
+def tokenize_string(file, start, char) -> Token | Error:
     final: str = ""
     escape: bool = False
     end: int = start+1
