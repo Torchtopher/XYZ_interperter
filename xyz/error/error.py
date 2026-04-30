@@ -1,12 +1,12 @@
-from xyz.error import Span
 from xyz.error.color import (style, NORMAL, BOLD, RED, WHITE, GRAY)
 from io import TextIOWrapper
 
-# An error in the XYZ pipeline.
-# Should primarily be handled as values, but can be thrown as exceptions if automatic propagation is needed.
-
+type Span = tuple[int, int]
 type LineCol = tuple[int, int]
 type LineSpan = tuple[LineCol, LineCol]
+
+# An error in the XYZ pipeline.
+# Should primarily be handled as values, but can be thrown as exceptions if automatic propagation is needed.
 
 class Error(Exception):
     span: Span
