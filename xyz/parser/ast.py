@@ -5,7 +5,7 @@ from enum import Enum
 
 type File = Expression
 type Expression = (LitNil | LitTrue | LitFalse | LitInt | LitFloat | 
-                   LitString | LitTable | BinaryExpression | UnaryExpression | Var) # | FunctionCall | Lambda
+                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr) # | FunctionCall | Lambda
 type LitNil = Literal[None] # You have to write this as None instead of LitNil for some reason
 type LitTrue = Literal[True] # same
 type LitFalse = Literal[False] # same
@@ -15,31 +15,30 @@ type LitString = str
 type LitTable = list[tuple[Expression, Expression]]
 type BinaryExpression = tuple[BinExpType, Expression, Expression]
 type UnaryExpression = tuple[UnExpType, Expression]
-type Var = tuple[str]
+type VarExpr = tuple[str, list[Expression]]
 
 class BinExpType(Enum):
-    INDEX = 0
-    ADD = 1
-    SUB = 2
-    MUL = 3
-    DIV = 4
-    FLOORDIV = 5
-    EXP = 6
-    MOD = 7
-    BIT_AND = 8
-    BIT_XOR = 9
-    BIT_OR = 10
-    LSHIFT = 11
-    RSHIFT = 12
-    CONCAT = 13
-    LESS = 14
-    LEQ = 15
-    GREATER = 16
-    GEQ = 17
-    EQUAL = 18
-    NEQ = 19
-    AND = 20
-    OR = 21
+    ADD = 0
+    SUB = 1
+    MUL = 2
+    DIV = 3
+    FLOORDIV = 4
+    EXP = 5
+    MOD = 6
+    BIT_AND = 7
+    BIT_XOR = 8
+    BIT_OR = 9
+    LSHIFT = 10
+    RSHIFT = 11
+    CONCAT = 12
+    LESS = 13
+    LEQ = 14
+    GREATER = 15
+    GEQ = 16
+    EQUAL = 17
+    NEQ = 18
+    AND = 19
+    OR = 20
 
 class UnExpType(Enum):
     NOT = 0
