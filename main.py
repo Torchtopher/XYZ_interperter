@@ -5,6 +5,8 @@ from xyz.tokenizer import tokenize
 from xyz.parser import parse
 from xyz.error import Error
 
+from xyz.parser.TokenIterator import TokenIterator
+
 
 def main():
     if len(argv) < 2:
@@ -20,7 +22,7 @@ def main():
             if isinstance(result, Error):
                 result.print()
             else:
-                tree = parse(file, result.__iter__())
+                tree = parse(file, TokenIterator(result))
                 if isinstance(tree, Error):
                     tree.print()
                 else:

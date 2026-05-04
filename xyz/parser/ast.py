@@ -12,6 +12,7 @@ type LitFalse = Literal[False] # same
 type LitInt = int
 type LitFloat = float
 type LitString = str
+type LitNum = (LitInt | LitFloat)
 type LitTable = list[tuple[Expression, Expression]]
 type BinaryExpression = tuple[BinExpType, Expression, Expression]
 type UnaryExpression = tuple[UnExpType, Expression]
