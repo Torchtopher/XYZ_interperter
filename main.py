@@ -1,5 +1,6 @@
 from sys import argv
 from os.path import isfile
+from io import StringIO
 
 from xyz.tokenizer import tokenize
 from xyz.parser import parse
@@ -7,6 +8,24 @@ from xyz.error import Error
 
 from xyz.parser.TokenIterator import TokenIterator
 
+
+
+def build_program(file_data):
+    # need to pretend we are a file
+    if isinstance(file_data, str):
+        file_data = StringIO(file_data)
+
+    result = tokenize(file_data)
+    if isinstance(result, Error):
+        result.print()
+    else:
+        tree = parse(file_data, TokenIterator(result))
+        if isinstance(tree, Error):
+            tree.print()
+        else:
+            print("\nResult from parsing: \n")
+            print(tree)
+    return tree
 
 def main():
     if len(argv) < 2:
@@ -18,17 +37,7 @@ def main():
             print("## IMPLEMENTATION STATUS - 2/3 (WIP)")
             print("## PRINTING PARSER OUTPUT")
             print()
-            result = tokenize(file)
-            if isinstance(result, Error):
-                result.print()
-            else:
-                tree = parse(file, TokenIterator(result))
-                if isinstance(tree, Error):
-                    tree.print()
-                else:
-                    print("\nResult from parsing: \n")
-                    print(tree)
-            file.close()
+            build_program(file)
 
 
 if __name__ == "__main__":

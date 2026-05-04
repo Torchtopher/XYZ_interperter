@@ -44,8 +44,8 @@ class TokenIterator:
 
     # True if current token is the type passed in, moves forward one if so
     def match(self, token_type: TokenType | list[TokenType]):
-        token_type = [token_type] if type(token_type) != list else token_type
-        if self.data[self.index].type in token_type:
+        token_types = token_type if isinstance(token_type, list) else [token_type]
+        if self.data[self.index].type in token_types:
             if not self.isEnd(): self.index += 1
             return True
         
@@ -55,7 +55,7 @@ class TokenIterator:
     # checks that token is correct, moves forward by 1 if so
     def expect(self, token_type: TokenType, source: TextIOWrapper) -> Token | WrongTokenError:
         if not self.data[self.index].type == token_type:
-            raise WrongTokenError(self.data[self.index+1], source, self.data[self.index].type)
+            raise WrongTokenError(self.data[self.index+1].span, source, self.data[self.index+1].type)
         else:
             return self.data[self.index]
 

@@ -11,7 +11,7 @@ from xyz.parser.TokenIterator import TokenIterator
 
 BINARY_TOKENS_TO_AST = {TT.OP_MINUS: AST.BinExpType.SUB, TT.OP_PLUS: AST.BinExpType.ADD}
 
-UNARY_TOKENS_TO_AST = { }
+UNARY_TOKENS_TO_AST = {TT.OP_SIZE: AST.UnExpType.SIZE, TT.OP_NOT: AST.UnExpType.NOT, TT.OP_MINUS: AST.UnExpType.NEG}
 
 def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
 
@@ -19,13 +19,19 @@ def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
 
     # recursion hierarchy (bottom is highest priority)
 
-    # expression
-    # bit or
-    # equality
-    # plus / minus
-    # mul / div 
-    # unary
-    # literals and identifiers
+    # Precedence definition (top down)
+    # or
+    # and
+    # < > <= >= != ==
+    # |
+    # ^
+    # &
+    # << >>
+    # ..
+    # + -
+    # * / // %
+    # unary: ! not # -
+    # **
 
     def parse_expression(tokens: TokenIterator) -> AST.Expression:
         exp = parse_term(tokens)
@@ -61,21 +67,17 @@ def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
         return exp
 
     def parse_unary(tokens: TokenIterator):
-        exp = parse_primary(tokens)
 
         # should we allow multiple unary operators in a row?
-        if (tokens.match(TT.OP_MINUS)):
-            rhs: AST.Expression = parse_expression(tokens)
-            return AST.UnaryExpression(AST.UnExpType.NEG, rhs)
-
-        if (tokens.match(TT.OP_NOT)):
-            rhs: AST.Expression = parse_expression(tokens)
-            return AST.UnaryExpression(AST.UnExpType.NOT, rhs)
-
-        if (tokens.match(TT.OP_SIZE)):
-            rhs: AST.Expression = parse_expression(tokens)
-            return AST.UnaryExpression(AST.UnExpType.SIZE, rhs)
+        while (tokens.match([TT.OP_MINUS,
+                             TT.OP_NOT,
+                             TT.OP_SIZE])):
+            t = tokens.prev()
+            rhs: AST.Expression = parse_unary(tokens)
+            return AST.UnaryExpression(UNARY_TOKENS_TO_AST[t.type], rhs)
         
+        exp = parse_primary(tokens)
+
         return exp
 
     def parse_primary(tokens: TokenIterator) -> AST.Expression: 
@@ -97,7 +99,7 @@ def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
             return AST.GroupedExpr(exp)
 
         # expected more than just ident but close enough
-        raise WrongTokenError(tokens.curr(), source, TT.IDENT)
+        raise WrongTokenError(tokens.curr().span, source, TT.IDENT)
              
 
     print(tokens)

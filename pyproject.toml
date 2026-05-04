@@ -4,9 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pytest>=9.0.3",
+]
 
 [dependency-groups]
 dev = [
     "ty>=0.0.33",
 ]
+
+# so that we can import main in tests
+[tool.pytest.ini_options]
+pythonpath = ["."]

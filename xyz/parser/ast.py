@@ -35,7 +35,7 @@ class UnExpType(Enum):
 
 type File = Expression
 type Expression = (LitNil | LitTrue | LitFalse | LitInt | LitFloat | 
-                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr) # | FunctionCall | Lambda
+                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr | GroupedExpr) # | FunctionCall | Lambda
 class LitInt(NamedTuple):
     value: int
 class LitFloat(NamedTuple):
