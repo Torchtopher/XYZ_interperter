@@ -1,22 +1,6 @@
 from typing import Literal
 from enum import Enum
-
-# The rules in this file are NOT for the language grammar, but for the AST.
-
-type File = Expression
-type Expression = (LitNil | LitTrue | LitFalse | LitInt | LitFloat | 
-                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr) # | FunctionCall | Lambda
-type LitNil = Literal[None] # You have to write this as None instead of LitNil for some reason
-type LitTrue = Literal[True] # same
-type LitFalse = Literal[False] # same
-type LitInt = int
-type LitFloat = float
-type LitString = str
-type LitNum = (LitInt | LitFloat)
-type LitTable = list[tuple[Expression, Expression]]
-type BinaryExpression = tuple[BinExpType, Expression, Expression]
-type UnaryExpression = tuple[UnExpType, Expression]
-type VarExpr = tuple[str, list[Expression]]
+from typing import NamedTuple
 
 class BinExpType(Enum):
     ADD = 0
@@ -45,3 +29,45 @@ class UnExpType(Enum):
     NOT = 0
     NEG = 1
     SIZE = 2
+
+
+# The rules in this file are NOT for the language grammar, but for the AST.
+
+type File = Expression
+type Expression = (LitNil | LitTrue | LitFalse | LitInt | LitFloat | 
+                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr) # | FunctionCall | Lambda
+class LitInt(NamedTuple):
+    value: int
+class LitFloat(NamedTuple):
+    value: float
+
+class LitString(NamedTuple):
+    value: str
+
+class LitNil(NamedTuple):
+    value: Literal[None]
+
+class LitTrue(NamedTuple):
+    value: Literal[True]
+
+class LitFalse(NamedTuple):
+    value: Literal[False]
+
+class LitTable(NamedTuple):
+    value: list[tuple[Expression, Expression]]
+class BinaryExpression(NamedTuple):
+    type: BinExpType
+    left: Expression
+    right: Expression
+
+class UnaryExpression(NamedTuple):
+    type: UnExpType
+    right: Expression
+
+class VarExpr(NamedTuple):
+    name: str
+    # no value because can't know what it will be
+
+class GroupedExpr(NamedTuple):
+    value: Expression
+    # no value because can't know what it will be

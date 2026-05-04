@@ -26,6 +26,7 @@ def main():
                 if isinstance(tree, Error):
                     tree.print()
                 else:
+                    print("\nResult from parsing: \n")
                     print(tree)
             file.close()
 

@@ -93,4 +93,4 @@ keywords: dict[str, TokenType] = {
 class Token(NamedTuple):
     type: TokenType
     span: Span
-    value: str | None
+    name: str | None

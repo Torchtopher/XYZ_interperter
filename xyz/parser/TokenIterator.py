@@ -1,5 +1,7 @@
 
 from xyz.tokenizer import Token, TokenType
+from xyz.parser.error import WrongTokenError
+from io import TextIOWrapper
 
 
 # want to be able to call next and also previous, 
@@ -23,24 +25,37 @@ class TokenIterator:
         else:
             return self.data[self.index+1]
     
+    def curr(self):
+        return self.data[self.index]
+
     # gives previous, does not move
     def prev(self):
         assert self.index != 0, "tried to call previous when nothing is before, almost ceratinly a bug?"
         return self.data[self.index-1]
 
     # gives you current token and moves forward one
-    def move(self):
+    def next(self):
         self.index += 1
         return self.prev()
     
-    # True if current token is the type passed in
-    def match(self, token_type: TokenType):
+    # checks the current token type, does not move
+    def check(self, token_type: TokenType):
         return self.data[self.index].type == token_type
-    
 
-    def expect(self, token_type: TokenType) -> Token | WrongTokenError:
-        if not self.data[self.index] == token_type:
-            raise WrongTokenError(token[1], source, type)
+    # True if current token is the type passed in, moves forward one if so
+    def match(self, token_type: TokenType | list[TokenType]):
+        token_type = [token_type] if type(token_type) != list else token_type
+        if self.data[self.index].type in token_type:
+            if not self.isEnd(): self.index += 1
+            return True
+        
+        return False
+    
+    # @TODO, moved here, not sure if it still works as intended 
+    # checks that token is correct, moves forward by 1 if so
+    def expect(self, token_type: TokenType, source: TextIOWrapper) -> Token | WrongTokenError:
+        if not self.data[self.index].type == token_type:
+            raise WrongTokenError(self.data[self.index+1], source, self.data[self.index].type)
         else:
             return self.data[self.index]
 
