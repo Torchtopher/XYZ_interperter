@@ -10,11 +10,11 @@ def var(name: str):
 
 
 def integer(value: str):
-    return AST.LitInt(value)
+    return AST.LitInt(int(value))
 
 
 def float_num(value: str):
-    return AST.LitFloat(value)
+    return AST.LitFloat(float(value))
 
 
 def grouped(value: AST.Expression):

@@ -7,10 +7,11 @@ from xyz.parser import parse
 from xyz.error import Error
 
 from xyz.parser.TokenIterator import TokenIterator
+from io import TextIOWrapper
 
 import pytest # would be sad to have known failing tests
 
-def build_program(file_data):
+def build_program(file_data: str | TextIOWrapper):
     # need to pretend we are a file
     if isinstance(file_data, str):
         file_data = StringIO(file_data)
