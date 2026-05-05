@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 
 from main import build_program
 from xyz.parser import AST

@@ -9,6 +9,8 @@ from xyz.error import Error
 from xyz.parser.token_iterator import TokenIterator
 from io import StringIO
 
+from xyz.interpreter.interpreter import execute_ast
+
 import pytest # would be sad to have known failing tests
 
 def build_program(file_data: StringIO):
@@ -34,6 +36,9 @@ def run_tests():
     assert retcode == 0, "Tests failed! see output"
 
 def main():
+    execute_ast("abc")
+    exit()
+    
     run_tests() 
 
     if len(argv) < 2:
