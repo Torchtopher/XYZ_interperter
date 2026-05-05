@@ -6,12 +6,12 @@ from xyz.tokenizer import tokenize
 from xyz.parser import parse
 from xyz.error import Error
 
-from xyz.parser.TokenIterator import TokenIterator
-from io import TextIOWrapper
+from xyz.parser.token_iterator import TokenIterator
+from io import StringIO
 
 import pytest # would be sad to have known failing tests
 
-def build_program(file_data: str | TextIOWrapper):
+def build_program(file_data: StringIO):
     # need to pretend we are a file
     if isinstance(file_data, str):
         file_data = StringIO(file_data)

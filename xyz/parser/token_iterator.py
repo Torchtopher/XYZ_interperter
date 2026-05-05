@@ -1,7 +1,7 @@
 
 from xyz.tokenizer import Token, TokenType
 from xyz.parser.error import WrongTokenError
-from io import TextIOWrapper
+from io import StringIO
 
 
 # want to be able to call next and also previous, 
@@ -52,7 +52,7 @@ class TokenIterator:
         return False
     
     # checks that token is correct, moves forward by 1 if so
-    def expect(self, token_type: TokenType, source: TextIOWrapper) -> Token | WrongTokenError:
+    def expect(self, token_type: TokenType, source: StringIO) -> Token | WrongTokenError:
         if not self.data[self.index].type == token_type:
             raise WrongTokenError(self.data[self.index+1].span, source, self.data[self.index+1].type)
         else:

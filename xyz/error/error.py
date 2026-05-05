@@ -1,5 +1,5 @@
 from xyz.error.color import (style, NORMAL, BOLD, RED, WHITE, GRAY)
-from io import TextIOWrapper
+from io import StringIO
 
 type Span = tuple[int, int]
 type LineCol = tuple[int, int]
@@ -10,7 +10,7 @@ type LineSpan = tuple[LineCol, LineCol]
 
 class Error(Exception):
     span: Span
-    file: TextIOWrapper
+    file: StringIO
     text: str
 
     def __init__(self, span, file):

@@ -6,19 +6,15 @@ from xyz.parser import AST
 
 
 def var(name: str):
-    return AST.VarExpr(name)
+    return AST.VarExpr(name, [])
 
 
-def integer(value: str):
-    return AST.LitInt(int(value))
+def integer(value: int):
+    return AST.LitInt(value)
 
 
-def float_num(value: str):
-    return AST.LitFloat(float(value))
-
-
-def grouped(value: AST.Expression):
-    return AST.GroupedExpr(value)
+def float_num(value: float):
+    return AST.LitFloat(value)
 
 
 def unary(operator: AST.UnExpType, right: AST.Expression):
@@ -34,16 +30,16 @@ def binary(operator: AST.BinExpType, left: AST.Expression, right: AST.Expression
     [
         ("a", var("a")),
         ("_abc123", var("_abc123")),
-        ("1", integer("1")),
-        ("12.34", float_num("12.34")),
+        ("1", integer(1)),
+        ("12.34", float_num(12.34)),
         ("true", AST.LitTrue(True)),
         ("false", AST.LitFalse(False)),
         ("nil", AST.LitNil(None)),
-        ("(a)", grouped(var("a"))),
+        ("(a)", var("a")),
     ],
 )
 def test_primary_expressions(program, expected):
-    assert build_program(program) == expected
+    assert build_program(program).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -57,11 +53,11 @@ def test_primary_expressions(program, expected):
         ("!-a", unary(AST.UnExpType.NOT, unary(AST.UnExpType.NEG, var("a")))),
         ("-#a", unary(AST.UnExpType.NEG, unary(AST.UnExpType.SIZE, var("a")))),
         ("not !a", unary(AST.UnExpType.NOT, unary(AST.UnExpType.NOT, var("a")))),
-        ("-(a + b)", unary(AST.UnExpType.NEG, grouped(binary(AST.BinExpType.ADD, var("a"), var("b"))))),
+        ("-(a + b)", unary(AST.UnExpType.NEG, binary(AST.BinExpType.ADD, var("a"), var("b")))),
     ],
 )
 def test_unary_expressions(program, expected):
-    assert build_program(program) == expected
+    assert build_program(program).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -91,7 +87,7 @@ def test_unary_expressions(program, expected):
     ],
 )
 def test_binary_operators(program, expected):
-    assert build_program(program) == expected
+    assert build_program(program).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -185,7 +181,7 @@ def test_binary_operators(program, expected):
             "(a + b) - c",
             binary(
                 AST.BinExpType.SUB,
-                grouped(binary(AST.BinExpType.ADD, var("a"), var("b"))),
+                binary(AST.BinExpType.ADD, var("a"), var("b")),
                 var("c"),
             ),
         ),
@@ -194,7 +190,7 @@ def test_binary_operators(program, expected):
             binary(
                 AST.BinExpType.MUL,
                 var("a"),
-                grouped(binary(AST.BinExpType.SUB, var("b"), var("c"))),
+                binary(AST.BinExpType.SUB, var("b"), var("c")),
             ),
         ),
         (
@@ -248,4 +244,4 @@ def test_binary_operators(program, expected):
     ],
 )
 def test_compound_expressions(program, expected):
-    assert build_program(program) == expected
+    assert build_program(program).return_statement == expected

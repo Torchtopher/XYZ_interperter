@@ -1,10 +1,10 @@
-from io import TextIOWrapper
+from io import StringIO
 from typing import Callable
 from xyz.parser.error import WrongTokenError
 from xyz.tokenizer import TokenType as TT
 import xyz.parser.ast as AST
 from xyz.error import Error
-from xyz.parser.TokenIterator import TokenIterator
+from xyz.parser.token_iterator import TokenIterator
 
 # For simplicity, the parser uses the python Exception system instead of an error-as-value system.
 # These are converted back to errors-as-values at the top of the parser call stack.
@@ -37,7 +37,7 @@ UNARY_TOKENS_TO_AST = {TT.OP_SIZE: AST.UnExpType.SIZE,
                        TT.OP_MINUS: AST.UnExpType.NEG,
                        }
 
-def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
+def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
 
     # ---
 
@@ -138,11 +138,11 @@ def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
     def parse_primary(tokens: TokenIterator) -> AST.Expression: 
         if (tokens.match(TT.INT)):
             t = tokens.prev()
-            return AST.LitInt(t.name)
+            return AST.LitInt(int(t.name))
       
         if (tokens.match(TT.FLOAT)):
             t = tokens.prev()
-            return AST.LitFloat(t.name)
+            return AST.LitFloat(float(t.name))
 
         if (tokens.match(TT.KEYWORD_TRUE)):
             t = tokens.prev()
@@ -158,7 +158,7 @@ def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
         
         if (tokens.match(TT.IDENT)):
             t = tokens.prev()
-            return AST.VarExpr(t.name)  
+            return AST.VarExpr(t.name, [])  
         
         if (tokens.match(TT.PAREN_OPEN)):
             exp = parse_expression(tokens)
@@ -172,7 +172,7 @@ def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
     print(tokens)
 
     try:
-        file: AST.File = parse_expression(tokens)
+        file: AST.File = AST.Block([], parse_expression(tokens))
         tokens.expect(TT.EOF, source)
     except Error as error: return error
     
