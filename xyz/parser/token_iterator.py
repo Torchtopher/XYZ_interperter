@@ -52,12 +52,12 @@ class TokenIterator:
         return False
     
     # checks that token is correct, moves forward by 1 if so
-    def expect(self, token_type: TokenType, source: StringIO) -> Token | WrongTokenError:
+    def expect(self, token_type: TokenType, source: StringIO) -> Token:
         if not self.data[self.index].type == token_type:
             raise WrongTokenError(self.data[self.index+1].span, source, self.data[self.index+1].type)
         else:
             if not self.isEnd(): self.index += 1
-            return self.data[min(len(self.data)-1, self.index)]
+            return self.data[min(len(self.data)-1, self.index-1)]
 
 
     def __repr__(self):

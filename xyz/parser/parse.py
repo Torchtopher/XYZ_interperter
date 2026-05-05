@@ -1,6 +1,6 @@
 from io import StringIO
 from typing import Callable
-from xyz.parser.error import WrongTokenError
+from xyz.parser.error import WrongTokenError, NoGrammarMatchError
 from xyz.tokenizer import TokenType as TT
 import xyz.parser.ast as AST
 from xyz.error import Error
@@ -144,21 +144,41 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
             t = tokens.prev()
             return AST.LitFloat(float(t.name))
 
-        if (tokens.match(TT.KEYWORD_TRUE)):
+        if (tokens.match(TT.STRING)):
             t = tokens.prev()
+            return AST.LitString(t.name)
+
+        if (tokens.match(TT.KEYWORD_TRUE)):
             return AST.LitTrue(True)
       
         if (tokens.match(TT.KEYWORD_FALSE)):
-            t = tokens.prev()
             return AST.LitFalse(False)
 
         if (tokens.match(TT.KEYWORD_NIL)):
-            t = tokens.prev()
             return AST.LitNil(None)
         
         if (tokens.match(TT.IDENT)):
-            t = tokens.prev()
-            return AST.VarExpr(t.name, [])  
+            name = tokens.prev().name
+            accessors = []
+            while (tokens.match([TT.DOT, TT.BRACKET_OPEN, TT.COLON, TT.PAREN_OPEN])):
+                t = tokens.prev()
+                match (t.type):
+                    case TT.DOT:
+                        next_accessor = tokens.expect(TT.IDENT, source).name
+                        assert next_accessor != None
+                        accessors.append(AST.LitString(next_accessor))
+                    case TT.BRACKET_OPEN:
+                        accessors.append(parse_expression(tokens))
+                        tokens.expect(TT.BRACKET_CLOSE, source)
+                    case TT.COLON:
+                        next_accessor = tokens.expect(TT.IDENT, source).name
+                        assert next_accessor != None
+                        accessors.append(AST.LitString(next_accessor))
+                        tokens.expect(TT.PAREN_OPEN, source)
+                        return parse_call(True, AST.VarExpr(name, accessors), tokens)
+                    case TT.PAREN_OPEN:
+                        return parse_call(False, AST.VarExpr(name, accessors), tokens)
+            return AST.VarExpr(name, accessors)
         
         if (tokens.match(TT.PAREN_OPEN)):
             exp = parse_expression(tokens)
@@ -166,8 +186,11 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
             return exp
 
         # expected more than just ident but close enough
-        raise WrongTokenError(tokens.curr().span, source, TT.IDENT)
-             
+        raise NoGrammarMatchError(tokens.curr().span, source, "expression")
+
+    def parse_call(method: bool, var: AST.VarExpr, tokens: TokenIterator) -> AST.FunctionCall:
+        tokens.expect(TT.PAREN_CLOSE, source)
+        return AST.FunctionCall(method, var, [])
 
     print(tokens)
 
