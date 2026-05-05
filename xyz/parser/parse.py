@@ -163,7 +163,7 @@ def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
         if (tokens.match(TT.PAREN_OPEN)):
             exp = parse_expression(tokens)
             tokens.expect(TT.PAREN_CLOSE, source)
-            return AST.GroupedExpr(exp)
+            return exp
 
         # expected more than just ident but close enough
         raise WrongTokenError(tokens.curr().span, source, TT.IDENT)

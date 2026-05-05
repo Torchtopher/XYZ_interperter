@@ -33,9 +33,8 @@ class UnExpType(Enum):
 
 # The rules in this file are NOT for the language grammar, but for the AST.
 
-type File = Expression
 type Expression = (LitNil | LitTrue | LitFalse | LitInt | LitFloat | 
-                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr | GroupedExpr) # | FunctionCall | Lambda
+                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr | FunctionCall) #Lambda)
 class LitInt(NamedTuple):
     value: int
 class LitFloat(NamedTuple):
@@ -66,8 +65,54 @@ class UnaryExpression(NamedTuple):
 
 class VarExpr(NamedTuple):
     name: str
+    accessors: list[Expression]
     # no value because can't know what it will be
 
 class GroupedExpr(NamedTuple):
     value: Expression
     # no value because can't know what it will be
+
+
+type File = Block
+type Statement = (SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop | FunctionDef )
+type ReturnStatement = Expression
+
+class Block(NamedTuple):
+    statements: list[Statement]
+    return_statement: ReturnStatement
+
+class SetStatement(NamedTuple):
+    var: list[VarExpr]
+    value: list[Expression]
+
+class FunctionCall(NamedTuple):
+    method: bool # whether the function is called with `:` instead of `.` to pass the containing table as the first argument
+    var: VarExpr
+    args: list[Expression]
+
+class Break(NamedTuple):
+    pass
+
+class WhileLoop(NamedTuple):
+    condition: Expression
+    block: Block
+
+class RepeatLoop(NamedTuple):
+    condition: Expression
+    block: Block
+
+class IfStatement(NamedTuple):
+    conditions: list[tuple[Expression, Block]]
+    else_block: Block | None
+
+class ForLoop(NamedTuple):
+    var: str
+    start: LitInt
+    end: LitInt
+    step: LitInt
+
+class FunctionDef(NamedTuple):
+    name: VarExpr
+    method: bool
+    parameters: list[str]
+    extra: str | None
