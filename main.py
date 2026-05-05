@@ -45,7 +45,7 @@ def main():
             print("## IMPLEMENTATION STATUS - 2/3 (WIP)")
             print("## PRINTING PARSER OUTPUT")
             print()
-            build_program(file)
+            build_program(StringIO(file.read()))
 
 
 if __name__ == "__main__":
