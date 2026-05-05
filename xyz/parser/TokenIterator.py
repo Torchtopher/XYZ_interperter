@@ -51,13 +51,13 @@ class TokenIterator:
         
         return False
     
-    # @TODO, moved here, not sure if it still works as intended 
     # checks that token is correct, moves forward by 1 if so
     def expect(self, token_type: TokenType, source: TextIOWrapper) -> Token | WrongTokenError:
         if not self.data[self.index].type == token_type:
             raise WrongTokenError(self.data[self.index+1].span, source, self.data[self.index+1].type)
         else:
-            return self.data[self.index]
+            if not self.isEnd(): self.index += 1
+            return self.data[min(len(self.data)-1, self.index)]
 
 
     def __repr__(self):
