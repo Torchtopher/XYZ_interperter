@@ -8,7 +8,7 @@ from xyz.error import Error
 
 from xyz.parser.TokenIterator import TokenIterator
 
-
+import pytest # would be sad to have known failing tests
 
 def build_program(file_data):
     # need to pretend we are a file
@@ -27,7 +27,14 @@ def build_program(file_data):
             print(tree)
     return tree
 
+def run_tests():
+    
+    retcode = pytest.main(["tests/"])
+    assert retcode == 0, "Tests failed! see output"
+
 def main():
+    run_tests() 
+
     if len(argv) < 2:
         print("No XYZ source file provided!")
     elif not isfile(argv[1]):

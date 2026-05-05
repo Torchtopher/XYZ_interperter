@@ -1,8 +1,5 @@
 import pytest
-import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from main import build_program
 from xyz.parser import AST
