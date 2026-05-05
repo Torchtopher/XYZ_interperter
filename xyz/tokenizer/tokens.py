@@ -1,6 +1,6 @@
 from enum import Enum
 from xyz.error import Span
-
+from typing import NamedTuple
 
 class TokenType(Enum):
     EOF = 0
@@ -90,4 +90,7 @@ keywords: dict[str, TokenType] = {
     "while": TokenType.KEYWORD_WHILE,
 }
 
-type Token = tuple[TokenType, Span, str | None]
+class Token(NamedTuple):
+    type: TokenType
+    span: Span
+    name: str | None

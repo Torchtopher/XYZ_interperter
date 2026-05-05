@@ -1,28 +1,179 @@
 from io import TextIOWrapper
-from typing import Iterator
-from xyz.tokenizer import Token, TokenType
+from typing import Callable
+from xyz.parser.error import WrongTokenError
+from xyz.tokenizer import TokenType as TT
 import xyz.parser.ast as AST
 from xyz.error import Error
-from xyz.parser.error import WrongTokenError
+from xyz.parser.TokenIterator import TokenIterator
 
 # For simplicity, the parser uses the python Exception system instead of an error-as-value system.
 # These are converted back to errors-as-values at the top of the parser call stack.
 
-def parse(source: TextIOWrapper, tokens: Iterator[Token]) -> AST.File | Error:
-    def expect(type: TokenType) -> Token | WrongTokenError:
-        token: Token = next(tokens)
-        if not token[0] == type:
-            raise WrongTokenError(token[1], source, type)
-        else:
-            return token
+BINARY_TOKENS_TO_AST = {TT.OP_MINUS: AST.BinExpType.SUB, 
+                        TT.OP_PLUS: AST.BinExpType.ADD,
+                        TT.OP_MUL: AST.BinExpType.MUL,
+                        TT.OP_FLOORDIV: AST.BinExpType.FLOORDIV,
+                        TT.OP_DIV: AST.BinExpType.DIV,
+                        TT.OP_MOD: AST.BinExpType.MOD,
+                        TT.OP_EXP: AST.BinExpType.EXP,
+                        TT.OP_AND: AST.BinExpType.BIT_AND,
+                        TT.OP_XOR: AST.BinExpType.BIT_XOR,
+                        TT.OP_OR: AST.BinExpType.BIT_OR,
+                        TT.OP_LSHIFT: AST.BinExpType.LSHIFT,
+                        TT.OP_RSHIFT: AST.BinExpType.RSHIFT,
+                        TT.OP_CONCAT: AST.BinExpType.CONCAT,
+                        TT.OP_LESS: AST.BinExpType.LESS,
+                        TT.OP_LEQ: AST.BinExpType.LEQ,
+                        TT.OP_GREATER: AST.BinExpType.GREATER,
+                        TT.OP_GEQ: AST.BinExpType.GEQ,
+                        TT.OP_EQUAL: AST.BinExpType.EQUAL,
+                        TT.OP_NEQ: AST.BinExpType.NEQ,
+                        TT.KEYWORD_AND: AST.BinExpType.AND,
+                        TT.KEYWORD_OR: AST.BinExpType.OR}
+
+UNARY_TOKENS_TO_AST = {TT.OP_SIZE: AST.UnExpType.SIZE, 
+                       TT.OP_NOT: AST.UnExpType.NOT, 
+                       TT.KEYWORD_NOT: AST.UnExpType.NOT,
+                       TT.OP_MINUS: AST.UnExpType.NEG,
+                       }
+
+def parse(source: TextIOWrapper, tokens: TokenIterator) -> AST.File | Error:
 
     # ---
 
-    def parse_expression(tokens: Iterator[Token]) -> AST.Expression:
-        return None
+    # recursion hierarchy (bottom is highest priority)
+
+    # Precedence definition (top down)
+    # or
+    # and
+    # < > <= >= != ==
+    # |
+    # ^
+    # &
+    # << >>
+    # ..
+    # + -
+    # * / // %  :parse_mul_div()
+    # unary: ! not # -  :parse_unary()
+    # **  :parse_power()
+    # idents, literals :parse_primary()
+
+    def parse_expression(tokens: TokenIterator) -> AST.Expression:
+        return parse_or(tokens)
+
+    # helper function for repetitve binary ops
+    def parse_general_binary_op(
+        tokens: TokenIterator,
+        operators: list[TT],
+        next_func: Callable[[TokenIterator], AST.Expression],
+    ) -> AST.Expression:
+        # next_func is one down on the ladder
+        exp = next_func(tokens)
+
+        while (tokens.match(operators)):
+            t = tokens.prev()
+            rhs: AST.Expression = next_func(tokens)
+            exp = AST.BinaryExpression(BINARY_TOKENS_TO_AST[t.type], exp, rhs)
+
+        return exp
+
+    def parse_or(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.KEYWORD_OR], parse_and)
+
+    def parse_and(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.KEYWORD_AND], parse_comparison)
+
+    def parse_comparison(tokens: TokenIterator) -> AST.Expression:
+        operators = [TT.OP_LESS,
+                     TT.OP_LEQ,
+                     TT.OP_GREATER,
+                     TT.OP_GEQ,
+                     TT.OP_EQUAL,
+                     TT.OP_NEQ]
+        return parse_general_binary_op(tokens, operators, parse_bit_or)
+
+    def parse_bit_or(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.OP_OR], parse_bit_xor)
+
+    def parse_bit_xor(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.OP_XOR], parse_bit_and)
+
+    def parse_bit_and(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.OP_AND], parse_shift)
+
+    def parse_shift(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.OP_LSHIFT, TT.OP_RSHIFT], parse_concat)
+
+    def parse_concat(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.OP_CONCAT], parse_add_sub)
+    
+    def parse_add_sub(tokens: TokenIterator) -> AST.Expression: 
+        return parse_general_binary_op(tokens, [TT.OP_MINUS, TT.OP_PLUS], parse_mul_div)
+
+
+    def parse_mul_div(tokens: TokenIterator):
+        operators = [TT.OP_MUL,
+                     TT.OP_DIV,
+                     TT.OP_FLOORDIV,
+                     TT.OP_MOD]
+        return parse_general_binary_op(tokens, operators, parse_unary)
+
+    def parse_unary(tokens: TokenIterator) -> AST.Expression:
+
+        while (tokens.match([TT.OP_MINUS,
+                             TT.OP_NOT,
+                             TT.KEYWORD_NOT,
+                             TT.OP_SIZE])):
+            t = tokens.prev()
+            rhs: AST.Expression = parse_unary(tokens)
+            return AST.UnaryExpression(UNARY_TOKENS_TO_AST[t.type], rhs)
+        
+        exp = parse_power(tokens)
+
+        return exp
+
+    def parse_power(tokens: TokenIterator) -> AST.Expression:
+        return parse_general_binary_op(tokens, [TT.OP_EXP], parse_primary)
+
+    def parse_primary(tokens: TokenIterator) -> AST.Expression: 
+        if (tokens.match(TT.INT)):
+            t = tokens.prev()
+            return AST.LitInt(t.name)
+      
+        if (tokens.match(TT.FLOAT)):
+            t = tokens.prev()
+            return AST.LitFloat(t.name)
+
+        if (tokens.match(TT.KEYWORD_TRUE)):
+            t = tokens.prev()
+            return AST.LitTrue(True)
+      
+        if (tokens.match(TT.KEYWORD_FALSE)):
+            t = tokens.prev()
+            return AST.LitFalse(False)
+
+        if (tokens.match(TT.KEYWORD_NIL)):
+            t = tokens.prev()
+            return AST.LitNil(None)
+        
+        if (tokens.match(TT.IDENT)):
+            t = tokens.prev()
+            return AST.VarExpr(t.name)  
+        
+        if (tokens.match(TT.PAREN_OPEN)):
+            exp = parse_expression(tokens)
+            tokens.expect(TT.PAREN_CLOSE, source)
+            return AST.GroupedExpr(exp)
+
+        # expected more than just ident but close enough
+        raise WrongTokenError(tokens.curr().span, source, TT.IDENT)
+             
+
+    print(tokens)
 
     try:
         file: AST.File = parse_expression(tokens)
-        expect(TokenType.EOF)
+        tokens.expect(TT.EOF, source)
     except Error as error: return error
+    
     return file
