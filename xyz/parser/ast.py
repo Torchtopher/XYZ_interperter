@@ -34,7 +34,7 @@ class UnExpType(Enum):
 # The rules in this file are NOT for the language grammar, but for the AST.
 
 type Expression = (LitNil | LitTrue | LitFalse | LitInt | LitFloat | 
-                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr | FunctionCall) #Lambda)
+                   LitString | LitTable | BinaryExpression | UnaryExpression | VarExpr | FunctionCall | Lambda)
 class LitInt(NamedTuple):
     value: int
 class LitFloat(NamedTuple):
@@ -72,7 +72,6 @@ class GroupedExpr(NamedTuple):
     value: Expression
     # no value because can't know what it will be
 
-
 type File = Block
 type Statement = (SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop | FunctionDef )
 type ReturnStatement = Expression
@@ -80,6 +79,11 @@ type ReturnStatement = Expression
 class Block(NamedTuple):
     statements: list[Statement]
     return_statement: ReturnStatement
+
+class Lambda(NamedTuple):
+    parameters: list[str]
+    extra: str | None
+    block: Block
 
 class SetStatement(NamedTuple):
     var: list[VarExpr]
@@ -116,3 +120,4 @@ class FunctionDef(NamedTuple):
     method: bool
     parameters: list[str]
     extra: str | None
+    block: Block
