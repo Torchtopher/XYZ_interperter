@@ -159,38 +159,42 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         
         if (tokens.match(TT.IDENT)):
             name = tokens.prev().name
-            accessors = []
-            while (tokens.match([TT.DOT, TT.BRACKET_OPEN, TT.COLON, TT.PAREN_OPEN])):
-                t = tokens.prev()
-                match (t.type):
-                    case TT.DOT:
-                        next_accessor = tokens.expect(TT.IDENT, source).name
-                        assert next_accessor != None
-                        accessors.append(AST.LitString(next_accessor))
-                    case TT.BRACKET_OPEN:
-                        accessors.append(parse_expression(tokens))
-                        tokens.expect(TT.BRACKET_CLOSE, source)
-                    case TT.COLON:
-                        next_accessor = tokens.expect(TT.IDENT, source).name
-                        assert next_accessor != None
-                        accessors.append(AST.LitString(next_accessor))
-                        tokens.expect(TT.PAREN_OPEN, source)
-                        return parse_call(True, AST.VarExpr(name, accessors), tokens)
-                    case TT.PAREN_OPEN:
-                        return parse_call(False, AST.VarExpr(name, accessors), tokens)
-            return AST.VarExpr(name, accessors)
+            return parse_prefixexp_actions(AST.Var(name), tokens)
         
         if (tokens.match(TT.PAREN_OPEN)):
             exp = parse_expression(tokens)
             tokens.expect(TT.PAREN_CLOSE, source)
-            return exp
+            return parse_prefixexp_actions(exp, tokens)
 
         # expected more than just ident but close enough
         raise NoGrammarMatchError(tokens.curr().span, source, "expression")
 
-    def parse_call(method: bool, var: AST.VarExpr, tokens: TokenIterator) -> AST.FunctionCall:
+    def parse_prefixexp_actions(prefixexp: AST.Expression, tokens: TokenIterator) -> AST.Expression:
+        final = prefixexp
+        while (tokens.match([TT.DOT, TT.BRACKET_OPEN, TT.COLON, TT.PAREN_OPEN])):
+            t = tokens.prev()
+            match (t.type):
+                case TT.DOT:
+                    next_accessor = tokens.expect(TT.IDENT, source).name
+                    assert next_accessor != None
+                    final = AST.Access(final, AST.LitString(next_accessor))
+                case TT.BRACKET_OPEN:
+                    final = AST.Access(final, parse_expression(tokens))
+                    tokens.expect(TT.BRACKET_CLOSE, source)
+                case TT.COLON:
+                    next_accessor = tokens.expect(TT.IDENT, source).name
+                    assert next_accessor != None
+                    final = AST.Access(final, AST.LitString(next_accessor))
+                    tokens.expect(TT.PAREN_OPEN, source)
+                    return parse_call(True, final, tokens)
+                case TT.PAREN_OPEN:
+                    if not isinstance(final, AST.Access): final = AST.Access(final, None)
+                    return parse_call(False, final, tokens)
+        return final
+
+    def parse_call(method: bool, access: AST.Access, tokens: TokenIterator) -> AST.Expression:
         tokens.expect(TT.PAREN_CLOSE, source)
-        return AST.FunctionCall(method, var, [])
+        return parse_prefixexp_actions(AST.FunctionCall(method, access, []), tokens)
 
     print(tokens)
 

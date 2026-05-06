@@ -2,8 +2,8 @@ import xyz.parser.ast as AST
 
 TEST_AST: AST.File = AST.Block(
     [
-        AST.SetStatement([AST.Access(AST.Var("a"), [])], [AST.LitInt(10)]),
-        AST.SetStatement([AST.Access(AST.Var("b"), [])], [AST.LitInt(11)]),
+        AST.SetStatement([AST.Access(AST.Var("a"), None)], [AST.LitInt(10)]),
+        AST.SetStatement([AST.Access(AST.Var("b"), None)], [AST.LitInt(11)]),
     ],
     AST.Var("b")
 )
