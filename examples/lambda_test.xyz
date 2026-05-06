@@ -1,0 +1,1 @@
+(function (a,b) a + b end)(1,2)

@@ -166,6 +166,15 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
             tokens.expect(TT.PAREN_CLOSE, source)
             return parse_prefixexp_actions(exp, tokens)
 
+        if (tokens.match(TT.BRACE_OPEN)):
+            table = parse_table(tokens)
+            tokens.expect(TT.BRACE_CLOSE, source)
+            return table
+
+        if (tokens.match(TT.KEYWORD_FUNCTION)):
+            return parse_lambda(tokens)
+
+
         # expected more than just ident but close enough
         raise NoGrammarMatchError(tokens.curr().span, source, "expression")
 
@@ -193,14 +202,47 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         return final
 
     def parse_call(method: bool, access: AST.Access, tokens: TokenIterator) -> AST.Expression:
+        args: list[AST.Expression] = []
+        stop: bool = False
+        while not stop and not tokens.match(TT.PAREN_CLOSE):
+            args.append(parse_expression(tokens))
+            if not tokens.match(TT.COMMA):
+                stop = True
         tokens.expect(TT.PAREN_CLOSE, source)
-        return parse_prefixexp_actions(AST.FunctionCall(method, access, []), tokens)
+        return parse_prefixexp_actions(AST.FunctionCall(method, access, args), tokens)
+
+    # todo! fields
+    def parse_table(tokens: TokenIterator) -> AST.LitTable:
+        return AST.LitTable([])
+
+    def parse_lambda(tokens: TokenIterator) -> AST.Lambda:
+        tokens.expect(TT.PAREN_OPEN, source)
+        args: list[str] = []
+        extra: str | None = None
+        stop: bool = False
+        while not stop and tokens.expect([TT.IDENT, TT.ELLIPSIS], source):
+            t = tokens.prev()
+            match (t.type):
+                case TT.IDENT:
+                    args.append(t.name)
+                    if not tokens.match(TT.COMMA):
+                        stop = True
+                case TT.ELLIPSIS:
+                    extra = tokens.expect(TT.IDENT, source).name
+                    stop = True
+        tokens.expect(TT.PAREN_CLOSE, source)
+        return AST.Lambda(args, extra, parse_block(TT.KEYWORD_END, tokens))
+
+    # todo! statements
+    def parse_block(until: TT, tokens: TokenIterator) -> AST.Block:
+        block = AST.Block([], parse_expression(tokens))
+        tokens.expect(until, source)
+        return block
 
     print(tokens)
 
     try:
-        file: AST.File = AST.Block([], parse_expression(tokens))
-        tokens.expect(TT.EOF, source)
+        file: AST.File = parse_block(TT.EOF, tokens)
     except Error as error: return error
     
     return file
