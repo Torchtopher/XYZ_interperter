@@ -68,7 +68,7 @@ class Var(NamedTuple):
 
 class Access(NamedTuple):
     source: Expression
-    accessors: list[Expression]
+    index: Expression | None
     # no value because can't know what it will be
 
 class GroupedExpr(NamedTuple):
