@@ -5,7 +5,7 @@ from xyz.parser import AST
 
 
 def var(name: str):
-    return AST.VarExpr(name, [])
+    return AST.Var(name)
 
 
 def integer(value: int):

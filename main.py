@@ -36,7 +36,7 @@ def run_tests():
     assert retcode == 0, "Tests failed! see output"
 
 def main():
-    execute_ast("abc")
+    execute_ast()
     exit()
     
     run_tests() 
