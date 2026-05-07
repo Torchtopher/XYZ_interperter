@@ -33,6 +33,12 @@ class TokenIterator:
         assert self.index != 0, "tried to call previous when nothing is before, almost ceratinly a bug?"
         return self.data[self.index-1]
 
+    # gives previous, moves back one
+    def back(self):
+        assert self.index != 0, "tried to call back when nothing is before, almost ceratinly a bug?"
+        self.index -= 1
+        return self.curr()
+
     # gives you current token and moves forward one
     def next(self):
         self.index += 1

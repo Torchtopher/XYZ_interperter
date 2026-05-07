@@ -204,7 +204,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
     def parse_call(method: bool, access: AST.Access, tokens: TokenIterator) -> AST.Expression:
         args: list[AST.Expression] = []
         stop: bool = False
-        while not stop and not tokens.match(TT.PAREN_CLOSE):
+        while not stop and tokens.curr().type != TT.PAREN_CLOSE:
             args.append(parse_expression(tokens))
             if not tokens.match(TT.COMMA):
                 stop = True
@@ -213,7 +213,38 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
 
     # todo! fields
     def parse_table(tokens: TokenIterator) -> AST.LitTable:
-        return AST.LitTable([])
+        fields: list[tuple[AST.Expression, AST.Expression]] = []
+        index = 0
+        stop: bool = False
+        while not stop:
+            t = tokens.next()
+            expr: bool = False
+            match (t.type):
+                case TT.BRACKET_OPEN:
+                    key = parse_expression(tokens)
+                    tokens.expect(TT.BRACKET_CLOSE, source)
+                    tokens.expect(TT.SET, source)
+                    fields.append((key, parse_expression(tokens)))
+                case TT.IDENT:
+                    if (tokens.curr().type == TT.SET):
+                        tokens.expect(TT.SET, source)
+                        key = AST.LitString(t.name)
+                        fields.append((key, parse_expression(tokens)))
+                    else:
+                        tokens.back()
+                        expr = True
+                case TT.BRACE_CLOSE:
+                    stop = True
+                case _:
+                    tokens.back()
+                    expr = True
+            if expr:
+                key = AST.LitInt(index)
+                index += 1
+                fields.append((key, parse_expression(tokens)))
+            if not tokens.match(TT.COMMA):
+                stop = True
+        return AST.LitTable(fields)
 
     def parse_lambda(tokens: TokenIterator) -> AST.Lambda:
         tokens.expect(TT.PAREN_OPEN, source)
@@ -230,6 +261,8 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                 case TT.ELLIPSIS:
                     extra = tokens.expect(TT.IDENT, source).name
                     stop = True
+                case _:
+                    raise NoGrammarMatchError(t.span, source, "argument")
         tokens.expect(TT.PAREN_CLOSE, source)
         return AST.Lambda(args, extra, parse_block(TT.KEYWORD_END, tokens))
 
