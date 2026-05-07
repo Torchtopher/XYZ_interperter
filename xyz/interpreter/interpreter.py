@@ -1,4 +1,6 @@
 import xyz.parser.ast as AST
+import numbers
+from xyz.interpreter.helpers import ensure_concat, ensure_int, ensure_num
 
 TEST_AST: AST.File = AST.Block(
     [
@@ -8,16 +10,21 @@ TEST_AST: AST.File = AST.Block(
     AST.Var("b")
 )
 
+  # set a.b[c] = 10
+# TEST_AST = AST.SetStatement(
+#       [AST.Access(
+#           AST.Access(AST.Var("a"), AST.LitString("b")),
+#           AST.Var("c"),
+#       )],
+#       [AST.LitInt(10)],
+#   )
+class XYZInterperter:
 
-def execute_ast(ast: AST.File):
-    ast = TEST_AST 
-    
-    print("Using TEST_AST INSTEAD of passed in AST")
-    
-    global_var_table = {}
-    
+    def __init__(self, GVT:dict=None):
+        # global variable table
+        self.GVT = {} if not GVT else GVT
 
-    def evaluate_expression(expr: AST.Expression):
+    def eval_expression(self, expr: AST.Expression):
         match type(expr):
             case AST.LitFalse:
                 return False
@@ -27,39 +34,143 @@ def execute_ast(ast: AST.File):
                 return None
             case AST.LitInt | AST.LitFloat | AST.LitString:
                 return expr.value
+            case AST.LitTable:
+                table = {}
+                for key, val in expr.value:
+                    key = self.eval_expression(key)
+                    val = self.eval_expression(val)
+                    table[key] = val
+                return table
             
+            case AST.FunctionCall:
+                print("ERROR NOT IMPLEMENTED YET")
+            case AST.Lambda:
+                print("ERROR NOT IMPLEMENTED YET")
+
+            case AST.UnaryExpression:
+                val = self.eval_expression(expr.right)
+                match expr.type:
+                    case AST.UnExpType.NOT:
+                        assert val is True or val is False or val is None, f"Can not take unary not of type {type(val)}"
+                        return not val
+                        
+                    case AST.UnExpType.NEG:
+                        assert isinstance(val, numbers.Number), f"attempt to perform arithmetic on a {type(val)} value"
+                        return -val
+                    
+                    case AST.UnExpType.SIZE:
+                        assert type(val) == dict, f"attempt to get length of a {type(val)} value"
+                        return len(val)
+
+            case AST.BinaryExpression:
+                left = self.eval_expression(expr.left)
+                right = self.eval_expression(expr.right)
+                match expr.type:
+                    # ===== can only be performed with numbers (floats and ints) ========
+                    case AST.BinExpType.ADD: # + 
+                        ensure_num([left, right])
+                        return left + right
+                    case AST.BinExpType.SUB: # -
+                        ensure_num([left, right])
+                        return left - right
+                    case AST.BinExpType.MUL: # *
+                        ensure_num([left, right])
+                        return left * right
+                    case AST.BinExpType.DIV: # /
+                        ensure_num([left, right])
+                        return left / right
+                    case AST.BinExpType.FLOORDIV: # //
+                        ensure_num([left, right])
+                        return left // right
+                    case AST.BinExpType.EXP: # **
+                        ensure_num([left, right])
+                        return left ** right
+                    case AST.BinExpType.MOD: # %
+                        ensure_num([left, right])
+                        return left % right
+                    
+                    case AST.BinExpType.LESS: 
+                        ensure_num([left, right])
+                        return left < right
+                    case AST.BinExpType.LEQ:
+                        ensure_num([left, right])
+                        return left <= right
+                    case AST.BinExpType.GREATER:
+                        ensure_num([left, right])
+                        return left > right
+                    case AST.BinExpType.GEQ:
+                        ensure_num([left, right])
+                        return left >= right
+
+                    # ===== can only be perfomed with 2 ints ========
+                    case AST.BinExpType.BIT_AND:
+                        ensure_int([left, right])
+                        return left & right
+                    case AST.BinExpType.BIT_XOR:
+                        ensure_int([left, right])
+                        return left ^ right
+                    case AST.BinExpType.BIT_OR:
+                        ensure_int([left, right])
+                        return left | right
+                    case AST.BinExpType.LSHIFT:
+                        ensure_int([left, right])
+                        return left << right
+                    case AST.BinExpType.RSHIFT:
+                        ensure_int([left, right])
+                        return left >> right
+
+                    # all objects
+                    case AST.BinExpType.EQUAL:
+                        return left == right
+                    case AST.BinExpType.NEQ:
+                        return left != right
+                    case AST.BinExpType.AND:
+                        return left and right
+                    case AST.BinExpType.OR:
+                        return left or right
+                    
+                    # works with strings and numbers only
+                    case AST.BinExpType.CONCAT:
+                        ensure_concat([left, right])
+                        return str(left) + str(right)
+                    case _:
+                        print(f"ERROR: Unhandled binary expression with type {expr.type}")
+                        exit(-1)
+
+            case AST.Var:
+                return self.GVT[expr.name]
+            # might need to evaulate a statement to figure this out (could have function call)
+            case AST.Access:
+                if type(expr.source) in [AST.FunctionCall]:
+                    res = self.exec_statement(expr) 
+                else:
+                    res = self.eval_expression(expr.source)
+                
+                if expr.index:
+                    idx = self.eval_expression(expr.index)
+                    return self.GVT[res][idx]
+
             case _:
                 print(f"UNHANDLED EXPR CASE: {type(expr)}")
-            
-    # gets the value of a variable, including accessors
-    def getVarExpr(var: AST.VarExpr):
-        
-        
-    # sets the value of a variable
-    def setVarExpr(var: AST.VarExpr, value):
-        if var.accessors: # something like a.b.c, b and c will be in accessors
-            # accessing the most inner dict to update 
-            dict_to_update = global_var_table[var.name] 
-            for accessor in var.accessors[:-1]:
-                dict_to_update = dict_to_update[accessor]
-            dict_to_update[var.accessors[-1]] = value
                 
-        global_var_table[var.name] = value
                     
-    
     # @TODO add line and character numebrs to the AST so we can give better error messages
-    def execute_statement(stmnt: AST.Statement):
+    def exec_statement(self, stmnt: AST.Statement):
         match type(stmnt):
             case AST.SetStatement:
                 if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
                 var: AST.VarExpr
                 expr: AST.Expression
                 for var, expr in zip(stmnt.var, stmnt.value, strict=True):
-                    val = evaluate_expression(expr)
+                    val = self.eval_expression(expr)   
 
-    
-    for statement in ast.statements:
-        execute_statement(statement)
-        print(global_var_table)
-    
-    return evaluate_expression(ast.return_statement)
+    def execute_ast(self, ast: AST.File):
+        ast = TEST_AST 
+        
+        print("Using TEST_AST INSTEAD of passed in AST")
+            
+        for statement in ast.statements:
+            self.exec_statement(statement)
+            print(self.GVT)
+        
+        return self.eval_expression(ast.return_statement)

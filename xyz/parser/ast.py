@@ -69,11 +69,9 @@ class Var(NamedTuple):
 class Access(NamedTuple):
     source: Expression
     index: Expression | None
-    # no value because can't know what it will be
 
 class GroupedExpr(NamedTuple):
     value: Expression
-    # no value because can't know what it will be
 
 type File = Block
 type Statement = (SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop | FunctionDef )

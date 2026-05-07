@@ -18,3 +18,8 @@ class NoGrammarMatchError(Error):
 
     def message(self):
         return "Expected %s, got:" % self.expected
+
+class OperationNotSupported(Error):
+    
+    def __init__(self, span, file):
+        super().__init__(span, file)
