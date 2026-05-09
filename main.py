@@ -35,8 +35,18 @@ def run_tests():
     assert retcode == 0, "Tests failed! see output"
 
 def main():
-    interp = XYZInterperter()
-    interp.execute_ast()
+    GVT = {
+      "a": {
+          "k": {
+              "b": 99,
+          },
+      },
+      "fx_result": {
+          "c": "k",
+      },
+  }
+    interp = XYZInterperter(GVT=GVT)
+    print(interp.execute_ast("a"))
     exit()
     
     run_tests() 

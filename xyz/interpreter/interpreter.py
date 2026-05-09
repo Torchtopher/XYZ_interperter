@@ -11,17 +11,29 @@ TEST_AST: AST.File = AST.Block(
     AST.Var("b")
 )
 
-  # set a.b[c] = 10
-  # g(x).b[f(x)]
-# TEST_AST = AST.SetStatement(
-#       [AST.Access(
-#           AST.Access(FunctionCall(g(x)), AST.LitString("b")),
-#           AST.FunctionCall(f(x)),
-#       )],
-#       [AST.LitInt(10)],
-#   )
+TEST_AST: AST.File = AST.Block(
+      statements=[],
+      return_statement=AST.Access(
+          AST.Access(
+              AST.Var("a"),
+              AST.Access(
+                  AST.Var("fx_result"),
+                  AST.LitString("c"),
+              ),
+          ),
+          AST.LitString("b"),
+      ),
+  )
 
+# a[f(x).c].b
+# access(acesss("a", acesss(f(x), "c")) , "b")
 
+# right lookup is
+# GVT["a"]["f(x)"]["c"]["b"]
+
+# most inner "source", that is not an access is the first lookup
+# then it goes first lookup index top to bottom (i.e if access chain keep looking up as you go down (f(x) then C in this case))
+# then go up go up one, take the result of the most inner one and apply the index chain lookup on it
 
 class AccessorResult(NamedTuple):
     table: dict
@@ -148,16 +160,11 @@ class XYZInterperter:
 
             case AST.Var:
                 return self.GVT[expr.name]
-            # might need to evaulate a statement to figure this out (could have function call)
+            
             case AST.Access:
-                if type(expr.source) in [AST.FunctionCall]:
-                    res = self.exec_statement(expr) 
-                else:
-                    res = self.eval_expression(expr.source)
-                
-                if expr.index:
-                    idx = self.eval_expression(expr.index)
-                    return self.GVT[res][idx]
+                container = self.eval_expression(expr.source)
+                index = self.eval_expression(expr.index)
+                return container[index]
 
             case _:
                 print(f"UNHANDLED EXPR CASE: {type(expr)}")
@@ -175,7 +182,8 @@ class XYZInterperter:
 
     # a.b[f(x)].c
     def accessor_helper(self, expr):
-        
+        pass
+
     # want to find the location of where in the variable table we can set a varaible
     # so for example if we ask for a.b, this will give the a's dict, with the key being b
     # access is the access expression
@@ -197,6 +205,7 @@ class XYZInterperter:
             key = self.eval_expression(access.source)    
             return AccessorResult(table=var_table, key=key)
         else:
+            pass
             
             
     def execute_ast(self, ast: AST.File):

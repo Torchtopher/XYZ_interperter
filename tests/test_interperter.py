@@ -112,5 +112,29 @@ def test_evaluates_var_expression_from_global_var_table():
 
 def test_evaluates_access_expression():
     expr = AST.Access(AST.Var("table_name"), AST.LitString("field"))
+    assert eval_expr(expr, {"table_name": {"field": 99}}) == 99
 
-    assert eval_expr(expr, {"table_name": "table", "table": {"field": 99}}) == 99
+
+def test_evaluates_nested_access_chain_with_access_as_index():
+    expr = AST.Access(
+        AST.Access(
+            AST.Var("a"),
+            AST.Access(
+                AST.Var("fx_result"),
+                AST.LitString("c"),
+            ),
+        ),
+        AST.LitString("b"),
+    )
+    global_var_table = {
+        "a": {
+            "k": {
+                "b": 99,
+            },
+        },
+        "fx_result": {
+            "c": "k",
+        },
+    }
+
+    assert eval_expr(expr, global_var_table) == 99
