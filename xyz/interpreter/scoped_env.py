@@ -1,35 +1,51 @@
+import xyz.parser.ast as AST
+
+class Variable:
+
+    def __init__(self, value, const=False):
+        self.const: bool = const
+        self.value = value
 
 
-# a is only aviable in x's scope 
-# def x():
-#     let a = 1
-# end 
-#
-
-# returns 2 
-# a = 1
-# def x():
-#     a = a + 1 
-#     return a
-# end 
-#
-
-# if use a let keyword, will create'
-
-# still unsure, can you do let a = 1 let a = 2 and it works?
 class Scope:
 
-    def __init__(self, parent=None):
+    def __init__(self, parent, name: str):
         self.parent: Scope | None = parent
-        self.table: dict = {}
+        self.table: dict[str, Variable] = {}
+        self.name = name
 
-    def get(self, key):
-        if key in self.table:
-            return self.table[key]
-        if self.parent:
-            return self.parent.get(key)
-        else:
-            return None
+    def __repr__(self):
+        return f"Scope {self.name} with table {self.table} and parent {self.parent}"
+    
+    def resolve_var(self, name):
+        if name in self.table:
+            return self.table[name]
         
-    def update():
-        pass
+        if self.parent is not None:
+            return self.parent.resolve_var(name)
+
+        return None
+    
+    def get(self, name):
+        res = self.resolve_var(name)
+        if res is None:
+            raise RuntimeError(f"Trying to access unbound variable: {name}")
+        return res.value
+
+    def define(self, name: str, val, const=False):
+        if name in self.table:
+            raise RuntimeError(f"Can not redefine variable with name: {name}")
+
+        self.table[name] = Variable(val, const)
+
+    def update(self, name: str, val):
+        res = self.resolve_var(name)
+        if res is None:
+            raise RuntimeError(f"Trying to set unbound variable: {name}")
+        
+        if res.const:
+            raise RuntimeError(f"Trying to update const variable {name}")
+        res.value = val
+        
+
+            

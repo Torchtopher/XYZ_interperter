@@ -3,17 +3,89 @@ import pytest
 import xyz.parser.ast as AST
 
 from xyz.interpreter.interpreter import XYZInterperter
+from xyz.interpreter.scoped_env import Scope
 
 
-def eval_expr(expr: AST.Expression, global_var_table: dict | None = None):
-    interpreter = XYZInterperter(global_var_table)
+def scope(values: dict | None = None) -> Scope:
+    env = Scope(None, "test")
+    for name, value in (values or {}).items():
+        env.define(name, value)
+    return env
+
+
+def scope_values(env: Scope):
+    return {name: var.value for name, var in env.table.items()}
+
+
+def eval_expr(expr: AST.Expression, global_var_table: dict | Scope | None = None):
+    env = global_var_table if isinstance(global_var_table, Scope) else scope(global_var_table)
+    interpreter = XYZInterperter(env)
     return interpreter.eval_expression(expr)
 
 
-def exec_stmt(statement: AST.Statement, global_var_table: dict | None = None):
-    interpreter = XYZInterperter(global_var_table)
+def exec_stmt(statement: AST.Statement, global_var_table: dict | Scope | None = None):
+    env = global_var_table if isinstance(global_var_table, Scope) else scope(global_var_table)
+    interpreter = XYZInterperter(env)
     interpreter.exec_statement(statement)
     return interpreter.GVT
+
+
+def eval_file(ast_file: AST.File, global_var_table: dict | Scope | None = None):
+    env = global_var_table if isinstance(global_var_table, Scope) else scope(global_var_table)
+    interpreter = XYZInterperter(env)
+    for statement in ast_file.statements:
+        interpreter.exec_statement(statement)
+    return interpreter.eval_expression(ast_file.return_statement), interpreter.GVT
+
+
+ACCESS_AND_DEFINITION_AST = AST.Block(
+    statements=[
+        AST.Definition(
+            const=False,
+            var=[AST.Var("a")],
+            value=[
+                AST.LitTable(
+                    [
+                        (
+                            AST.LitString("k"),
+                            AST.LitTable([(AST.LitString("b"), AST.LitInt(99))]),
+                        )
+                    ]
+                )
+            ],
+        ),
+        AST.Definition(
+            const=True,
+            var=[AST.Var("fx_result")],
+            value=[
+                AST.LitTable(
+                    [
+                        (AST.LitString("c"), AST.LitString("k")),
+                    ]
+                )
+            ],
+        ),
+        AST.SetStatement(
+            [
+                AST.Access(
+                    AST.Access(
+                        AST.Var("a"),
+                        AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+                    ),
+                    AST.LitString("b"),
+                )
+            ],
+            [AST.LitInt(10)],
+        ),
+    ],
+    return_statement=AST.Access(
+        AST.Access(
+            AST.Var("a"),
+            AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+        ),
+        AST.LitString("b"),
+    ),
+)
 
 
 def literal(value):
@@ -147,22 +219,59 @@ def test_evaluates_nested_access_chain_with_access_as_index():
     assert eval_expr(expr, global_var_table) == 99
 
 
-def test_set_statement_creates_top_level_variable():
-    statement = AST.SetStatement(
-        [AST.Access(AST.Var("a"), None)],
-        [AST.LitInt(10)],
+def test_example_ast_defines_values_sets_nested_access_and_returns_result():
+    result, env = eval_file(ACCESS_AND_DEFINITION_AST)
+
+    assert result == 10
+    assert scope_values(env) == {
+        "a": {"k": {"b": 10}},
+        "fx_result": {"c": "k"},
+    }
+
+
+def test_definition_creates_let_variable():
+    statement = AST.Definition(
+        const=False,
+        var=[AST.Var("a")],
+        value=[AST.LitInt(10)],
     )
 
-    assert exec_stmt(statement) == {"a": 10}
+    env = exec_stmt(statement)
+
+    assert env.get("a") == 10
+    assert env.resolve_var("a").const is False
 
 
-def test_set_statement_replaces_top_level_variable():
+def test_definition_creates_const_variable():
+    statement = AST.Definition(
+        const=True,
+        var=[AST.Var("a")],
+        value=[AST.LitInt(10)],
+    )
+
+    env = exec_stmt(statement)
+
+    assert env.get("a") == 10
+    assert env.resolve_var("a").const is True
+
+
+def test_definition_creates_multiple_variables():
+    statement = AST.Definition(
+        const=False,
+        var=[AST.Var("a"), AST.Var("b")],
+        value=[AST.LitInt(1), AST.LitString("two")],
+    )
+
+    assert scope_values(exec_stmt(statement)) == {"a": 1, "b": "two"}
+
+
+def test_set_statement_replaces_existing_variable():
     statement = AST.SetStatement(
         [AST.Access(AST.Var("a"), None)],
         [AST.LitInt(20)],
     )
 
-    assert exec_stmt(statement, {"a": 10}) == {"a": 20}
+    assert exec_stmt(statement, {"a": 10}).get("a") == 20
 
 
 def test_set_statement_evaluates_value_expression_before_assignment():
@@ -177,7 +286,7 @@ def test_set_statement_evaluates_value_expression_before_assignment():
         ],
     )
 
-    assert exec_stmt(statement) == {"a": 5}
+    assert exec_stmt(statement, {"a": 0}).get("a") == 5
 
 
 def test_set_statement_assigns_into_existing_table():
@@ -186,7 +295,7 @@ def test_set_statement_assigns_into_existing_table():
         [AST.LitInt(10)],
     )
 
-    assert exec_stmt(statement, {"a": {}}) == {"a": {"b": 10}}
+    assert scope_values(exec_stmt(statement, {"a": {}})) == {"a": {"b": 10}}
 
 
 def test_set_statement_assigns_into_nested_access_target():
@@ -200,7 +309,9 @@ def test_set_statement_assigns_into_nested_access_target():
         [AST.LitInt(10)],
     )
 
-    assert exec_stmt(statement, {"a": {"b": {}}}) == {"a": {"b": {"c": 10}}}
+    assert scope_values(exec_stmt(statement, {"a": {"b": {}}})) == {
+        "a": {"b": {"c": 10}}
+    }
 
 
 def test_set_statement_assigns_with_access_expression_as_index():
@@ -218,7 +329,7 @@ def test_set_statement_assigns_with_access_expression_as_index():
         "fx_result": {"c": "k"},
     }
 
-    assert exec_stmt(statement, global_var_table) == {
+    assert scope_values(exec_stmt(statement, global_var_table)) == {
         "a": {"k": 10},
         "fx_result": {"c": "k"},
     }
@@ -242,13 +353,13 @@ def test_set_statement_assigns_into_nested_target_with_computed_inner_index():
         "fx_result": {"c": "k"},
     }
 
-    assert exec_stmt(statement, global_var_table) == {
+    assert scope_values(exec_stmt(statement, global_var_table)) == {
         "a": {"k": {"b": 10}},
         "fx_result": {"c": "k"},
     }
 
 
-def test_set_statement_assigns_multiple_targets():
+def test_set_statement_assigns_multiple_existing_targets():
     statement = AST.SetStatement(
         [
             AST.Access(AST.Var("a"), None),
@@ -260,10 +371,43 @@ def test_set_statement_assigns_multiple_targets():
         ],
     )
 
-    assert exec_stmt(statement, {"table": {}}) == {
+    assert scope_values(exec_stmt(statement, {"a": 0, "table": {}})) == {
         "a": 1,
         "table": {"field": "value"},
     }
+
+
+def test_set_statement_rejects_unbound_variable_assignment():
+    statement = AST.SetStatement(
+        [AST.Access(AST.Var("a"), None)],
+        [AST.LitInt(1)],
+    )
+
+    with pytest.raises(RuntimeError, match="unbound variable"):
+        exec_stmt(statement)
+
+
+def test_set_statement_rejects_const_variable_reassignment():
+    env = scope()
+    env.define("a", 1, const=True)
+    statement = AST.SetStatement(
+        [AST.Access(AST.Var("a"), None)],
+        [AST.LitInt(2)],
+    )
+
+    with pytest.raises(RuntimeError, match="const variable"):
+        exec_stmt(statement, env)
+
+
+def test_set_statement_can_mutate_table_stored_in_const_variable():
+    env = scope()
+    env.define("a", {"b": 1}, const=True)
+    statement = AST.SetStatement(
+        [AST.Access(AST.Var("a"), AST.LitString("b"))],
+        [AST.LitInt(2)],
+    )
+
+    assert scope_values(exec_stmt(statement, env)) == {"a": {"b": 2}}
 
 
 def test_set_statement_rejects_mismatched_target_and_value_counts():
@@ -273,6 +417,17 @@ def test_set_statement_rejects_mismatched_target_and_value_counts():
             AST.Access(AST.Var("b"), None),
         ],
         [AST.LitInt(1)],
+    )
+
+    with pytest.raises(RuntimeError, match="same number"):
+        exec_stmt(statement)
+
+
+def test_definition_rejects_mismatched_target_and_value_counts():
+    statement = AST.Definition(
+        const=False,
+        var=[AST.Var("a"), AST.Var("b")],
+        value=[AST.LitInt(1)],
     )
 
     with pytest.raises(RuntimeError, match="same number"):

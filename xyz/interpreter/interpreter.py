@@ -3,13 +3,22 @@ import numbers
 from xyz.interpreter.helpers import ensure_concat, ensure_int, ensure_num
 from typing import NamedTuple
 
+from xyz.interpreter.scoped_env import Scope
+
 TEST_AST: AST.File = AST.Block(
-    [
-        AST.SetStatement([AST.Access(AST.Var("a"), None)], [AST.LitInt(10)]),
-        AST.SetStatement([AST.Access(AST.Var("b"), None )], [AST.LitInt(11)]),
-    ],
-    AST.Var("b")
-)
+      statements=[
+          AST.Definition(
+              const=False,
+              var=[AST.Var("a")],
+              value=[AST.LitInt(1)],
+          ),
+          AST.SetStatement(
+              var=[AST.Access(AST.Var("a"), None)],
+              value=[AST.LitInt(2)],
+          ),
+      ],
+      return_statement=AST.Var("a"),
+  )
 
 # TEST_AST: AST.File = AST.Block(
 #       statements=[],
@@ -36,21 +45,24 @@ TEST_AST: AST.File = AST.Block(
 # then go up go up one, take the result of the most inner one and apply the index chain lookup on it
 
 class AccessorResult(NamedTuple):
-    table: dict
+    table: Scope | dict
     key: any
 
 class FunctionInfo():
     scope = {}
     ast = AST.Block
-    
+
 
 # {f: }
 
 class XYZInterperter:
 
-    def __init__(self, GVT:dict=None):
+    def __init__(self, GVT:Scope=None):
         # global variable table
-        self.GVT = {} if not GVT else GVT
+        self.GVT: Scope = Scope(None, "global") if not GVT else GVT
+        
+        # current variable table
+        self.CVT: Scope = self.GVT 
 
     def eval_expression(self, expr: AST.Expression):
         match type(expr):
@@ -166,7 +178,7 @@ class XYZInterperter:
                         exit(-1)
 
             case AST.Var:
-                return self.GVT[expr.name]
+                return self.CVT.get(expr.name)
             
             case AST.Access:
                 container = self.eval_expression(expr.source)
@@ -180,6 +192,12 @@ class XYZInterperter:
     # @TODO add line and character numebrs to the AST so we can give better error messages
     def exec_statement(self, stmnt: AST.Statement):
         match type(stmnt):
+            case AST.Definition:
+                if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
+                for var, expr in zip(stmnt.var, stmnt.value, strict=True):
+                    val = self.eval_expression(expr)
+                    self.CVT.define(var.name, val, stmnt.const)     
+
             case AST.SetStatement:
                 if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
                 var: AST.VarExpr
@@ -187,20 +205,28 @@ class XYZInterperter:
                 for var, expr in zip(stmnt.var, stmnt.value, strict=True):
                     access: AccessorResult = self.find_accessor(var)
                     val = self.eval_expression(expr)
-                    access.table[access.key] = val   
+                    # this means that we are doing assignment to something like
+                    # a = 1
+                    if isinstance(access.table, Scope):
+                        # need to repect const 
+                        access.table.update(access.key, val)
 
+                    # this case is for something like
+                    # a.b = 2, since eval(a) is a dict with like {"b": 42}
+                    else:
+                        assert type(access.table) == dict, f"how is this: {type(access.table)}" 
+                        access.table[access.key] = val 
 
     # basically the same as evaulating an expression, but this time give back the container and key
     # so the caller can set the value themseleves 
     def find_accessor(self, access_expr: AST.Access) -> AccessorResult:
         if access_expr.index is None:
             assert type(access_expr.source) == AST.Var, "with no index, the expression to be set must be a variable"
-            return AccessorResult(self.GVT, access_expr.source.name)
+            return AccessorResult(self.CVT, access_expr.source.name)
         
         container = self.eval_expression(access_expr.source)
         key = self.eval_expression(access_expr.index)
-        print(container)
-        print(key)
+
         return AccessorResult(container, key)
             
             
