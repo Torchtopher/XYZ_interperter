@@ -5,25 +5,25 @@ from typing import NamedTuple
 
 TEST_AST: AST.File = AST.Block(
     [
-        AST.SetStatement([AST.Access(AST.Var("a"), [])], [AST.LitInt(10)]),
-        AST.SetStatement([AST.Access(AST.Var("b"), [])], [AST.LitInt(11)]),
+        AST.SetStatement([AST.Access(AST.Var("a"), None)], [AST.LitInt(10)]),
+        AST.SetStatement([AST.Access(AST.Var("b"), None )], [AST.LitInt(11)]),
     ],
     AST.Var("b")
 )
 
-TEST_AST: AST.File = AST.Block(
-      statements=[],
-      return_statement=AST.Access(
-          AST.Access(
-              AST.Var("a"),
-              AST.Access(
-                  AST.Var("fx_result"),
-                  AST.LitString("c"),
-              ),
-          ),
-          AST.LitString("b"),
-      ),
-  )
+# TEST_AST: AST.File = AST.Block(
+#       statements=[],
+#       return_statement=AST.Access(
+#           AST.Access(
+#               AST.Var("a"),
+#               AST.Access(
+#                   AST.Var("fx_result"),
+#                   AST.LitString("c"),
+#               ),
+#           ),
+#           AST.LitString("b"),
+#       ),
+#   )
 
 # a[f(x).c].b
 # access(acesss("a", acesss(f(x), "c")) , "b")
@@ -178,34 +178,23 @@ class XYZInterperter:
                 var: AST.VarExpr
                 expr: AST.Expression
                 for var, expr in zip(stmnt.var, stmnt.value, strict=True):
-                    val = self.eval_expression(expr)   
+                    access: AccessorResult = self.find_accessor(var)
+                    val = self.eval_expression(expr)
+                    access.table[access.key] = val   
 
-    # a.b[f(x)].c
-    def accessor_helper(self, expr):
-        pass
 
-    # want to find the location of where in the variable table we can set a varaible
-    # so for example if we ask for a.b, this will give the a's dict, with the key being b
-    # access is the access expression
-    # var_table starts as the GVT, but as nesting happens if becomes the dict from GVT["a"]["b"]...
-    # want to walk to the end of the Access tree
-    def find_accessor(self, access: AST.Access, var_table: dict) -> AccessorResult:
+    # basically the same as evaulating an expression, but this time give back the container and key
+    # so the caller can set the value themseleves 
+    def find_accessor(self, access_expr: AST.Access) -> AccessorResult:
+        if access_expr.index is None:
+            assert type(access_expr.source) == AST.Var, "with no index, the expression to be set must be a variable"
+            return AccessorResult(self.GVT, access_expr.source.name)
         
-        if type(access) == AST.Access:
-            access_res: AccessorResult = self.find_accessor(access.source, var_table)
-            index_res: AccessorResult = self.find_accessor(access.index, var_table)
-            return access_res.table[access_res.key] 
-        else:
-            return self.eval_expression(access), var_table
-        
-        assert type(access) == AST.Access, "Should be an access at this point" 
-        if access.index is not None:         
-            prev: AccessorResult = self.find_accessor(access.source)
-        
-            key = self.eval_expression(access.source)    
-            return AccessorResult(table=var_table, key=key)
-        else:
-            pass
+        container = self.eval_expression(access_expr.source)
+        key = self.eval_expression(access_expr.index)
+        print(container)
+        print(key)
+        return AccessorResult(container, key)
             
             
     def execute_ast(self, ast: AST.File):

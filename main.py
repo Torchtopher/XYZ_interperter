@@ -45,7 +45,7 @@ def main():
           "c": "k",
       },
   }
-    interp = XYZInterperter(GVT=GVT)
+    interp = XYZInterperter()
     print(interp.execute_ast("a"))
     exit()
     

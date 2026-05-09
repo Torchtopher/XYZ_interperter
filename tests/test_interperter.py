@@ -10,6 +10,12 @@ def eval_expr(expr: AST.Expression, global_var_table: dict | None = None):
     return interpreter.eval_expression(expr)
 
 
+def exec_stmt(statement: AST.Statement, global_var_table: dict | None = None):
+    interpreter = XYZInterperter(global_var_table)
+    interpreter.exec_statement(statement)
+    return interpreter.GVT
+
+
 def literal(value):
     if value is True:
         return AST.LitTrue(True)
@@ -116,6 +122,7 @@ def test_evaluates_access_expression():
 
 
 def test_evaluates_nested_access_chain_with_access_as_index():
+    # a[f(x).c].b
     expr = AST.Access(
         AST.Access(
             AST.Var("a"),
@@ -138,3 +145,145 @@ def test_evaluates_nested_access_chain_with_access_as_index():
     }
 
     assert eval_expr(expr, global_var_table) == 99
+
+
+def test_set_statement_creates_top_level_variable():
+    statement = AST.SetStatement(
+        [AST.Access(AST.Var("a"), None)],
+        [AST.LitInt(10)],
+    )
+
+    assert exec_stmt(statement) == {"a": 10}
+
+
+def test_set_statement_replaces_top_level_variable():
+    statement = AST.SetStatement(
+        [AST.Access(AST.Var("a"), None)],
+        [AST.LitInt(20)],
+    )
+
+    assert exec_stmt(statement, {"a": 10}) == {"a": 20}
+
+
+def test_set_statement_evaluates_value_expression_before_assignment():
+    statement = AST.SetStatement(
+        [AST.Access(AST.Var("a"), None)],
+        [
+            AST.BinaryExpression(
+                AST.BinExpType.ADD,
+                AST.LitInt(2),
+                AST.LitInt(3),
+            )
+        ],
+    )
+
+    assert exec_stmt(statement) == {"a": 5}
+
+
+def test_set_statement_assigns_into_existing_table():
+    statement = AST.SetStatement(
+        [AST.Access(AST.Var("a"), AST.LitString("b"))],
+        [AST.LitInt(10)],
+    )
+
+    assert exec_stmt(statement, {"a": {}}) == {"a": {"b": 10}}
+
+
+def test_set_statement_assigns_into_nested_access_target():
+    statement = AST.SetStatement(
+        [
+            AST.Access(
+                AST.Access(AST.Var("a"), AST.LitString("b")),
+                AST.LitString("c"),
+            )
+        ],
+        [AST.LitInt(10)],
+    )
+
+    assert exec_stmt(statement, {"a": {"b": {}}}) == {"a": {"b": {"c": 10}}}
+
+
+def test_set_statement_assigns_with_access_expression_as_index():
+    statement = AST.SetStatement(
+        [
+            AST.Access(
+                AST.Var("a"),
+                AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+            )
+        ],
+        [AST.LitInt(10)],
+    )
+    global_var_table = {
+        "a": {"k": 1},
+        "fx_result": {"c": "k"},
+    }
+
+    assert exec_stmt(statement, global_var_table) == {
+        "a": {"k": 10},
+        "fx_result": {"c": "k"},
+    }
+
+
+def test_set_statement_assigns_into_nested_target_with_computed_inner_index():
+    statement = AST.SetStatement(
+        [
+            AST.Access(
+                AST.Access(
+                    AST.Var("a"),
+                    AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+                ),
+                AST.LitString("b"),
+            )
+        ],
+        [AST.LitInt(10)],
+    )
+    global_var_table = {
+        "a": {"k": {"b": 99}},
+        "fx_result": {"c": "k"},
+    }
+
+    assert exec_stmt(statement, global_var_table) == {
+        "a": {"k": {"b": 10}},
+        "fx_result": {"c": "k"},
+    }
+
+
+def test_set_statement_assigns_multiple_targets():
+    statement = AST.SetStatement(
+        [
+            AST.Access(AST.Var("a"), None),
+            AST.Access(AST.Var("table"), AST.LitString("field")),
+        ],
+        [
+            AST.LitInt(1),
+            AST.LitString("value"),
+        ],
+    )
+
+    assert exec_stmt(statement, {"table": {}}) == {
+        "a": 1,
+        "table": {"field": "value"},
+    }
+
+
+def test_set_statement_rejects_mismatched_target_and_value_counts():
+    statement = AST.SetStatement(
+        [
+            AST.Access(AST.Var("a"), None),
+            AST.Access(AST.Var("b"), None),
+        ],
+        [AST.LitInt(1)],
+    )
+
+    with pytest.raises(RuntimeError, match="same number"):
+        exec_stmt(statement)
+
+
+def test_set_statement_rejects_no_index_target_that_is_not_a_variable():
+    statement = AST.SetStatement(
+        [AST.Access(AST.LitString("not_a_var"), None)],
+        [AST.LitInt(1)],
+    )
+
+    with pytest.raises(AssertionError, match="must be a variable"):
+        exec_stmt(statement)
