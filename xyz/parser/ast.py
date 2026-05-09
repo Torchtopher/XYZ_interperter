@@ -74,7 +74,7 @@ class GroupedExpr(NamedTuple):
     value: Expression
 
 type File = Block
-type Statement = (SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop | FunctionDef )
+type Statement = (Definition | SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop | FunctionDef )
 type ReturnStatement = Expression
 
 class Block(NamedTuple):
@@ -85,6 +85,13 @@ class Lambda(NamedTuple):
     parameters: list[str]
     extra: str | None
     block: Block
+
+# function definitions are const Definitions if their name is just a variable name
+# otherwise they are SetStatements
+class Definition(NamedTuple):
+    const: bool
+    var: list[Var]
+    value: list[Expression]
 
 class SetStatement(NamedTuple):
     var: list[Access]
