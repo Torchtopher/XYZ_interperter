@@ -1,6 +1,7 @@
 import xyz.parser.ast as AST
 import numbers
 from xyz.interpreter.helpers import ensure_concat, ensure_int, ensure_num
+from typing import NamedTuple
 
 TEST_AST: AST.File = AST.Block(
     [
@@ -11,13 +12,21 @@ TEST_AST: AST.File = AST.Block(
 )
 
   # set a.b[c] = 10
+  # g(x).b[f(x)]
 # TEST_AST = AST.SetStatement(
 #       [AST.Access(
-#           AST.Access(AST.Var("a"), AST.LitString("b")),
-#           AST.Var("c"),
+#           AST.Access(FunctionCall(g(x)), AST.LitString("b")),
+#           AST.FunctionCall(f(x)),
 #       )],
 #       [AST.LitInt(10)],
 #   )
+
+
+
+class AccessorResult(NamedTuple):
+    table: dict
+    key: any
+    
 class XYZInterperter:
 
     def __init__(self, GVT:dict=None):
@@ -164,6 +173,32 @@ class XYZInterperter:
                 for var, expr in zip(stmnt.var, stmnt.value, strict=True):
                     val = self.eval_expression(expr)   
 
+    # a.b[f(x)].c
+    def accessor_helper(self, expr):
+        
+    # want to find the location of where in the variable table we can set a varaible
+    # so for example if we ask for a.b, this will give the a's dict, with the key being b
+    # access is the access expression
+    # var_table starts as the GVT, but as nesting happens if becomes the dict from GVT["a"]["b"]...
+    # want to walk to the end of the Access tree
+    def find_accessor(self, access: AST.Access, var_table: dict) -> AccessorResult:
+        
+        if type(access) == AST.Access:
+            access_res: AccessorResult = self.find_accessor(access.source, var_table)
+            index_res: AccessorResult = self.find_accessor(access.index, var_table)
+            return access_res.table[access_res.key] 
+        else:
+            return self.eval_expression(access), var_table
+        
+        assert type(access) == AST.Access, "Should be an access at this point" 
+        if access.index is not None:         
+            prev: AccessorResult = self.find_accessor(access.source)
+        
+            key = self.eval_expression(access.source)    
+            return AccessorResult(table=var_table, key=key)
+        else:
+            
+            
     def execute_ast(self, ast: AST.File):
         ast = TEST_AST 
         
