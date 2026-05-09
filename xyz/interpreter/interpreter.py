@@ -38,7 +38,14 @@ TEST_AST: AST.File = AST.Block(
 class AccessorResult(NamedTuple):
     table: dict
     key: any
+
+class FunctionInfo():
+    scope = {}
+    ast = AST.Block
     
+
+# {f: }
+
 class XYZInterperter:
 
     def __init__(self, GVT:dict=None):
