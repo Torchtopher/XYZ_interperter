@@ -355,8 +355,28 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                     tokens.expect(until, source)
                     return AST.Block(statements, ret)
                 case _:
-                    # distinguish between assignment and call
-                    pass
+                    tokens.back()
+                    expr = parse_expression(tokens)
+                    if isinstance(expr, AST.Var):
+                        expr = AST.Access(expr, None)
+                    if isinstance(expr, AST.FunctionCall):
+                        statements.append(expr)
+                    elif isinstance(expr, AST.Access):
+                        var: list[AST.Access] = [expr]
+                        while tokens.match(TT.COMMA):
+                            next_var = parse_expression(tokens)
+                            if isinstance(next_var, AST.Var):
+                                next_var = AST.Access(next_var, None)
+                            if not isinstance(next_var, AST.Access):
+                                raise NoGrammarMatchError(tokens.prev().span, source, "variable or indexed expression")
+                            var.append(next_var)
+                        tokens.expect(TT.SET, source)
+                        value: list[AST.Expression] = [parse_expression(tokens)]
+                        while tokens.match(TT.COMMA):
+                            value.append(parse_expression(tokens))
+                        statements.append(AST.SetStatement(var, value))
+                    else:
+                        raise NoGrammarMatchError(tokens.prev().span, source, "assignment or function call")
         return AST.Block(statements, AST.LitNil(None))
 
     try:
