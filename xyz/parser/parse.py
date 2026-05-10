@@ -246,9 +246,9 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                 stop = True
         return AST.LitTable(fields)
 
-    def parse_lambda(tokens: TokenIterator) -> AST.Lambda:
+    def parse_lambda(tokens: TokenIterator, method: bool = False) -> AST.Lambda:
         tokens.expect(TT.PAREN_OPEN, source)
-        args: list[str] = []
+        args: list[str] = ["self"] if method else []
         extra: str | None = None
         stop: bool = False
         while not stop and tokens.expect([TT.IDENT, TT.ELLIPSIS], source):
@@ -330,7 +330,26 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                     tokens.expect(TT.KEYWORD_DO, source)
                     statements.append(AST.ForLoop(ident.name, start, end, step, parse_block(TT.KEYWORD_END, tokens)))
                 case TT.KEYWORD_FUNCTION:
-                    pass
+                    ident = tokens.expect(TT.IDENT, source)
+                    assert isinstance(ident.name, str)
+                    var: AST.Var | AST.Access = AST.Var(ident.name)
+                    method: bool = False
+                    while tokens.match([TT.DOT, TT.COLON]):
+                        match tokens.prev().type:
+                            case TT.DOT:
+                                next_accessor = tokens.expect(TT.IDENT, source).name
+                                assert next_accessor != None
+                                var = AST.Access(var, AST.LitString(next_accessor))
+                            case TT.COLON:
+                                next_accessor = tokens.expect(TT.IDENT, source).name
+                                assert next_accessor != None
+                                var = AST.Access(var, AST.LitString(next_accessor))
+                                method = True
+                                break
+                    if isinstance(var, AST.Var):
+                        statements.append(AST.Definition(True, [AST.Var(ident.name)], [parse_lambda(tokens)]))
+                    else:
+                        statements.append(AST.SetStatement([var], [parse_lambda(tokens, method)]))
                 case TT.KEYWORD_RETURN:
                     ret = parse_expression(tokens)
                     tokens.expect(until, source)
