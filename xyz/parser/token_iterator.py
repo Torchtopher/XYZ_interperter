@@ -33,6 +33,12 @@ class TokenIterator:
         assert self.index != 0, "tried to call previous when nothing is before, almost ceratinly a bug?"
         return self.data[self.index-1]
 
+    # gives previous, moves back one
+    def back(self):
+        assert self.index != 0, "tried to call back when nothing is before, almost ceratinly a bug?"
+        self.index -= 1
+        return self.curr()
+
     # gives you current token and moves forward one
     def next(self):
         self.index += 1
@@ -52,12 +58,14 @@ class TokenIterator:
         return False
     
     # checks that token is correct, moves forward by 1 if so
-    def expect(self, token_type: TokenType, source: StringIO) -> Token:
-        if not self.data[self.index].type == token_type:
-            raise WrongTokenError(self.data[self.index+1].span, source, self.data[self.index+1].type)
+    def expect(self, token_type: TokenType | list[TokenType], source: StringIO) -> Token:
+        token_types = token_type if isinstance(token_type, list) else [token_type]
+        if not self.data[self.index].type in token_types:
+            raise WrongTokenError(self.data[self.index].span, source, token_types)
         else:
             if not self.isEnd(): self.index += 1
             return self.data[min(len(self.data)-1, self.index-1)]
+
 
 
     def __repr__(self):

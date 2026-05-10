@@ -1,1 +1,28 @@
-a * (b - c.d.e["d"]["e"]:f())
+for i = 1,1+1,{2,3,4} do
+	repeat return i*2 until i == 1
+	while true do end
+end
+
+if a == b then
+	return 123
+elseif b.a == 2 then
+	return 456
+elseif c.d == 2 then
+	return 134
+end
+if a+b then
+	return 1
+end
+if a+b then
+	return 2
+elseif a-b then return c
+else return 3 end
+
+let a, b, c = 1, 2, 3
+const d = 4
+
+function myfunc (a, b, c)
+	return a+b+c
+end
+
+return a * (b - (c.d.e["d"]["e"]:f())({a,b,c,d = e, 1+1, [1+1] = 2+3})["a"].b())

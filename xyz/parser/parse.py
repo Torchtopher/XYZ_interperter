@@ -159,44 +159,228 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         
         if (tokens.match(TT.IDENT)):
             name = tokens.prev().name
-            accessors = []
-            while (tokens.match([TT.DOT, TT.BRACKET_OPEN, TT.COLON, TT.PAREN_OPEN])):
-                t = tokens.prev()
-                match (t.type):
-                    case TT.DOT:
-                        next_accessor = tokens.expect(TT.IDENT, source).name
-                        assert next_accessor != None
-                        accessors.append(AST.LitString(next_accessor))
-                    case TT.BRACKET_OPEN:
-                        accessors.append(parse_expression(tokens))
-                        tokens.expect(TT.BRACKET_CLOSE, source)
-                    case TT.COLON:
-                        next_accessor = tokens.expect(TT.IDENT, source).name
-                        assert next_accessor != None
-                        accessors.append(AST.LitString(next_accessor))
-                        tokens.expect(TT.PAREN_OPEN, source)
-                        return parse_call(True, AST.VarExpr(name, accessors), tokens)
-                    case TT.PAREN_OPEN:
-                        return parse_call(False, AST.VarExpr(name, accessors), tokens)
-            return AST.VarExpr(name, accessors)
+            return parse_prefixexp_actions(AST.Var(name), tokens)
         
         if (tokens.match(TT.PAREN_OPEN)):
             exp = parse_expression(tokens)
             tokens.expect(TT.PAREN_CLOSE, source)
-            return exp
+            return parse_prefixexp_actions(exp, tokens)
+
+        if (tokens.match(TT.BRACE_OPEN)):
+            table = parse_table(tokens)
+            tokens.expect(TT.BRACE_CLOSE, source)
+            return table
+
+        if (tokens.match(TT.KEYWORD_FUNCTION)):
+            return parse_lambda(tokens)
+
 
         # expected more than just ident but close enough
         raise NoGrammarMatchError(tokens.curr().span, source, "expression")
 
-    def parse_call(method: bool, var: AST.VarExpr, tokens: TokenIterator) -> AST.FunctionCall:
-        tokens.expect(TT.PAREN_CLOSE, source)
-        return AST.FunctionCall(method, var, [])
+    def parse_prefixexp_actions(prefixexp: AST.Expression, tokens: TokenIterator) -> AST.Expression:
+        final = prefixexp
+        while (tokens.match([TT.DOT, TT.BRACKET_OPEN, TT.COLON, TT.PAREN_OPEN])):
+            t = tokens.prev()
+            match (t.type):
+                case TT.DOT:
+                    next_accessor = tokens.expect(TT.IDENT, source).name
+                    assert next_accessor != None
+                    final = AST.Access(final, AST.LitString(next_accessor))
+                case TT.BRACKET_OPEN:
+                    final = AST.Access(final, parse_expression(tokens))
+                    tokens.expect(TT.BRACKET_CLOSE, source)
+                case TT.COLON:
+                    next_accessor = tokens.expect(TT.IDENT, source).name
+                    assert next_accessor != None
+                    final = AST.Access(final, AST.LitString(next_accessor))
+                    tokens.expect(TT.PAREN_OPEN, source)
+                    return parse_call(True, final, tokens)
+                case TT.PAREN_OPEN:
+                    if not isinstance(final, AST.Access): final = AST.Access(final, None)
+                    return parse_call(False, final, tokens)
+        return final
 
-    print(tokens)
+    def parse_call(method: bool, access: AST.Access, tokens: TokenIterator) -> AST.Expression:
+        args: list[AST.Expression] = []
+        stop: bool = False
+        while not stop and tokens.curr().type != TT.PAREN_CLOSE:
+            args.append(parse_expression(tokens))
+            if not tokens.match(TT.COMMA):
+                stop = True
+        tokens.expect(TT.PAREN_CLOSE, source)
+        return parse_prefixexp_actions(AST.FunctionCall(method, access, args), tokens)
+
+    # todo! fields
+    def parse_table(tokens: TokenIterator) -> AST.LitTable:
+        fields: list[tuple[AST.Expression, AST.Expression]] = []
+        index = 0
+        stop: bool = False
+        while not stop:
+            t = tokens.next()
+            expr: bool = False
+            match (t.type):
+                case TT.BRACKET_OPEN:
+                    key = parse_expression(tokens)
+                    tokens.expect(TT.BRACKET_CLOSE, source)
+                    tokens.expect(TT.SET, source)
+                    fields.append((key, parse_expression(tokens)))
+                case TT.IDENT:
+                    if (tokens.curr().type == TT.SET):
+                        tokens.expect(TT.SET, source)
+                        key = AST.LitString(t.name)
+                        fields.append((key, parse_expression(tokens)))
+                    else:
+                        tokens.back()
+                        expr = True
+                case TT.BRACE_CLOSE:
+                    stop = True
+                case _:
+                    tokens.back()
+                    expr = True
+            if expr:
+                key = AST.LitInt(index)
+                index += 1
+                fields.append((key, parse_expression(tokens)))
+            if not tokens.match(TT.COMMA):
+                stop = True
+        return AST.LitTable(fields)
+
+    def parse_lambda(tokens: TokenIterator, method: bool = False) -> AST.Lambda:
+        tokens.expect(TT.PAREN_OPEN, source)
+        args: list[str] = ["self"] if method else []
+        extra: str | None = None
+        stop: bool = False
+        while not stop and tokens.expect([TT.IDENT, TT.ELLIPSIS], source):
+            t = tokens.prev()
+            match (t.type):
+                case TT.IDENT:
+                    args.append(t.name)
+                    if not tokens.match(TT.COMMA):
+                        stop = True
+                case TT.ELLIPSIS:
+                    extra = tokens.expect(TT.IDENT, source).name
+                    stop = True
+                case _:
+                    raise NoGrammarMatchError(t.span, source, "argument")
+        tokens.expect(TT.PAREN_CLOSE, source)
+        return AST.Lambda(args, extra, parse_block(TT.KEYWORD_END, tokens))
+
+    def parse_definition(tokens: TokenIterator, const: bool) -> AST.Definition:
+        name = tokens.expect(TT.IDENT, source).name
+        assert isinstance(name, str)
+        var: list[AST.Var] = [AST.Var(name)]
+        while tokens.match(TT.COMMA):
+            name = tokens.expect(TT.IDENT, source).name
+            assert isinstance(name, str)
+            var.append(AST.Var(name))
+        tokens.expect(TT.SET, source)
+        value: list[AST.Expression] = [parse_expression(tokens)]
+        while tokens.match(TT.COMMA):
+            value.append(parse_expression(tokens))
+        return AST.Definition(const, var, value)
+
+    # todo! statements
+    def parse_block(until: TT | list[TT], tokens: TokenIterator) -> AST.Block:
+        statements: list[AST.Statement] = []
+        while not tokens.match(until):
+            t = tokens.next()
+            match (t.type):
+                case TT.SEMICOLON:
+                    pass
+                case TT.KEYWORD_LET:
+                    statements.append(parse_definition(tokens, False))
+                case TT.KEYWORD_CONST:
+                    statements.append(parse_definition(tokens, True))
+                case TT.KEYWORD_BREAK:
+                    statements.append(AST.Break())
+                case TT.KEYWORD_DO:
+                    statements.append(parse_block(TT.KEYWORD_END, tokens))
+                case TT.KEYWORD_WHILE:
+                    expression: AST.Expression = parse_expression(tokens)
+                    tokens.expect(TT.KEYWORD_DO, source)
+                    statements.append(AST.WhileLoop(expression, parse_block(TT.KEYWORD_END, tokens)))
+                case TT.KEYWORD_REPEAT:
+                    block: AST.Block = parse_block(TT.KEYWORD_UNTIL, tokens)
+                    statements.append(AST.RepeatLoop(parse_expression(tokens), block))
+                case TT.KEYWORD_IF:
+                    conditions: list[tuple[AST.Expression, AST.Block]] = []
+                    cond = parse_expression(tokens)
+                    tokens.expect(TT.KEYWORD_THEN, source)
+                    conditions.append((cond, parse_block([TT.KEYWORD_ELSEIF, TT.KEYWORD_ELSE, TT.KEYWORD_END], tokens)))
+                    while tokens.prev().type != TT.KEYWORD_END:
+                        match tokens.prev().type:
+                            case TT.KEYWORD_ELSEIF:
+                                cond = parse_expression(tokens)
+                                tokens.expect(TT.KEYWORD_THEN, source)
+                                conditions.append((cond, parse_block([TT.KEYWORD_ELSEIF, TT.KEYWORD_ELSE, TT.KEYWORD_END], tokens)))
+                            case TT.KEYWORD_ELSE:
+                                statements.append(AST.IfStatement(conditions, parse_block(TT.KEYWORD_END, tokens)))
+                                break
+                    statements.append(AST.IfStatement(conditions, None))
+                case TT.KEYWORD_FOR:
+                    ident = tokens.expect(TT.IDENT, source)
+                    assert isinstance(ident.name, str)
+                    tokens.expect(TT.SET, source)
+                    start = parse_expression(tokens)
+                    tokens.expect(TT.COMMA, source)
+                    end = parse_expression(tokens)
+                    tokens.expect(TT.COMMA, source)
+                    step = parse_expression(tokens)
+                    tokens.expect(TT.KEYWORD_DO, source)
+                    statements.append(AST.ForLoop(ident.name, start, end, step, parse_block(TT.KEYWORD_END, tokens)))
+                case TT.KEYWORD_FUNCTION:
+                    ident = tokens.expect(TT.IDENT, source)
+                    assert isinstance(ident.name, str)
+                    var: AST.Var | AST.Access = AST.Var(ident.name)
+                    method: bool = False
+                    while tokens.match([TT.DOT, TT.COLON]):
+                        match tokens.prev().type:
+                            case TT.DOT:
+                                next_accessor = tokens.expect(TT.IDENT, source).name
+                                assert next_accessor != None
+                                var = AST.Access(var, AST.LitString(next_accessor))
+                            case TT.COLON:
+                                next_accessor = tokens.expect(TT.IDENT, source).name
+                                assert next_accessor != None
+                                var = AST.Access(var, AST.LitString(next_accessor))
+                                method = True
+                                break
+                    if isinstance(var, AST.Var):
+                        statements.append(AST.Definition(True, [AST.Var(ident.name)], [parse_lambda(tokens)]))
+                    else:
+                        statements.append(AST.SetStatement([var], [parse_lambda(tokens, method)]))
+                case TT.KEYWORD_RETURN:
+                    ret = parse_expression(tokens)
+                    tokens.expect(until, source)
+                    return AST.Block(statements, ret)
+                case _:
+                    tokens.back()
+                    expr = parse_expression(tokens)
+                    if isinstance(expr, AST.Var):
+                        expr = AST.Access(expr, None)
+                    if isinstance(expr, AST.FunctionCall):
+                        statements.append(expr)
+                    elif isinstance(expr, AST.Access):
+                        var: list[AST.Access] = [expr]
+                        while tokens.match(TT.COMMA):
+                            next_var = parse_expression(tokens)
+                            if isinstance(next_var, AST.Var):
+                                next_var = AST.Access(next_var, None)
+                            if not isinstance(next_var, AST.Access):
+                                raise NoGrammarMatchError(tokens.prev().span, source, "variable or indexed expression")
+                            var.append(next_var)
+                        tokens.expect(TT.SET, source)
+                        value: list[AST.Expression] = [parse_expression(tokens)]
+                        while tokens.match(TT.COMMA):
+                            value.append(parse_expression(tokens))
+                        statements.append(AST.SetStatement(var, value))
+                    else:
+                        raise NoGrammarMatchError(tokens.prev().span, source, "assignment or function call")
+        return AST.Block(statements, AST.LitNil(None))
 
     try:
-        file: AST.File = AST.Block([], parse_expression(tokens))
-        tokens.expect(TT.EOF, source)
+        file: AST.File = parse_block(TT.EOF, tokens)
     except Error as error: return error
     
     return file

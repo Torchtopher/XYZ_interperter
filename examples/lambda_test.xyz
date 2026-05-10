@@ -1,0 +1,7 @@
+mytable = {
+	d = 4
+}
+function mytable:add_with(c)
+	return function (a,b) return a + b + c + self.d end
+end
+return mytable:add_with(3)(1,2)

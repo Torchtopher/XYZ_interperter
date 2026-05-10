@@ -10,4 +10,3 @@ Interprets a provided XYZ script, providing some standard libraries.
 ```uv run pytest -v``` - runs the tests to make sure things parse as expected
 
 ```uv run main.py examples/parse_test.xyz``` - runs end to end on ```parse_test.xyz```
-

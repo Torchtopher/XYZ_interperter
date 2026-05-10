@@ -119,7 +119,7 @@ class IfStatement(NamedTuple):
 
 class ForLoop(NamedTuple):
     var: str
-    start: LitInt
-    end: LitInt
-    step: LitInt
+    start: Expression
+    end: Expression
+    step: Expression
     block: Block
