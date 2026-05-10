@@ -337,14 +337,15 @@ class XYZInterperter:
 
                 self.CVT = Scope(self.CVT, "If statement")
                 try:
-                    # if we have an else block, just put it at the end and treat it the same as elseifs
-                    if stmnt.else_block:
-                        stmnt.conditions.append((AST.LitTrue(True), stmnt.else_block))
+                    stop = False
 
                     for expr, block in stmnt.conditions:
                         if (self.eval_expression(expr)):
                             self.execute_ast(block)
+                            stop = True
                             break
+                    if not stop and stmnt.else_block:
+                        self.execute_ast(stmnt.else_block)
                     
                 finally:
                     self.CVT = old_cvt

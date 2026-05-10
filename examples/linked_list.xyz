@@ -1,7 +1,6 @@
-const linkedlist = {}
 let mylinkedlist = nil
 -- linked list nodes are of the form {val = <any>, next = <nil | linked list node>}
-function linkedlist.add(val)
+function add(val)
 	if mylinkedlist == nil then
 		mylinkedlist = {val = val}
 	else
@@ -13,7 +12,7 @@ function linkedlist.add(val)
 	end
 end
 
-function linkedlist.get(index)
+function get(index)
 	let curr = mylinkedlist
 	while index > 0 do
 		index = index - 1
@@ -22,7 +21,7 @@ function linkedlist.get(index)
 	return curr.val
 end
 
-linkedlist.add(1)
-linkedlist.add(2)
-linkedlist.add(3)
-return mylinkedlist
+add(1)
+add(2)
+add(3)
+return get(2)
