@@ -233,7 +233,7 @@ class XYZInterperter:
             case AST.Access:
                 container = self.eval_expression(expr.source)
                 index = self.eval_expression(expr.index)
-                return container[index]
+                return container if index == None else (container[index] if index in container else None)
 
             case _:
                 print(f"UNHANDLED EXPR CASE: {type(expr)}")

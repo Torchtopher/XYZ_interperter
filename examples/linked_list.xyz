@@ -25,4 +25,4 @@ end
 linkedlist.add(1)
 linkedlist.add(2)
 linkedlist.add(3)
-return linkedlist.get(2)
+return mylinkedlist
