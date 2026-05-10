@@ -270,7 +270,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         return AST.Definition(const, [], [])
 
     # todo! statements
-    def parse_block(until: TT, tokens: TokenIterator) -> AST.Block:
+    def parse_block(until: TT | list[TT], tokens: TokenIterator) -> AST.Block:
         statements: list[AST.Statement] = []
         while not tokens.match(until):
             t = tokens.next()
@@ -293,7 +293,20 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                     block: AST.Block = parse_block(TT.KEYWORD_UNTIL, tokens)
                     statements.append(AST.RepeatLoop(parse_expression(tokens), block))
                 case TT.KEYWORD_IF:
-                    pass
+                    conditions: list[tuple[AST.Expression, AST.Block]] = []
+                    cond = parse_expression(tokens)
+                    tokens.expect(TT.KEYWORD_THEN, source)
+                    conditions.append((cond, parse_block([TT.KEYWORD_ELSEIF, TT.KEYWORD_ELSE, TT.KEYWORD_END], tokens)))
+                    while tokens.prev().type != TT.KEYWORD_END:
+                        match tokens.prev().type:
+                            case TT.KEYWORD_ELSEIF:
+                                cond = parse_expression(tokens)
+                                tokens.expect(TT.KEYWORD_THEN, source)
+                                conditions.append((cond, parse_block([TT.KEYWORD_ELSEIF, TT.KEYWORD_ELSE, TT.KEYWORD_END], tokens)))
+                            case TT.KEYWORD_ELSE:
+                                statements.append(AST.IfStatement(conditions, parse_block(TT.KEYWORD_END, tokens)))
+                                break
+                    statements.append(AST.IfStatement(conditions, None))
                 case TT.KEYWORD_FOR:
                     ident = tokens.expect(TT.IDENT, source)
                     assert isinstance(ident.name, str)
