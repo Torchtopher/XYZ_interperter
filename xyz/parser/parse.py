@@ -252,7 +252,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         args: list[str] = ["self"] if method else []
         extra: str | None = None
         stop: bool = False
-        while not stop and tokens.expect([TT.IDENT, TT.ELLIPSIS], source):
+        while not stop and tokens.match([TT.IDENT, TT.ELLIPSIS]):
             t = tokens.prev()
             match (t.type):
                 case TT.IDENT:

@@ -8,10 +8,17 @@ from xyz.eval import debug, BuildStep
 import pytest # would be sad to have known failing tests
 
 DEBUG = False
+
+# demo import function
+def xyz_import(name):
+    with open("examples/"+name, "r") as file:
+        return eval(file.read(), ENV)
+
 ENV = XYZEnvironment({
     "io": {
         "print": lambda *args: print(*args)
-    }
+    },
+    "import": xyz_import
 })
 
 def run_tests():

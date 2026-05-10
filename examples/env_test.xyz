@@ -1,2 +1,6 @@
+const ll = import("linked_list.xyz").new()
 io.print("hello from XYZ!")
-return 0
+ll:add(1)
+ll:add(2)
+ll:add(3)
+return ll:get(2)
