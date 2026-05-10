@@ -1,53 +1,25 @@
 from sys import argv
 from os.path import isfile
-from io import StringIO
 from enum import Enum
 
-from xyz.tokenizer import tokenize
-from xyz.parser import parse
-from xyz.error import Error
-
-from xyz.parser.token_iterator import TokenIterator
-from io import StringIO
-
-from xyz.interpreter.interpreter import XYZInterperter
+from xyz import eval, XYZEnvironment
+from xyz.eval import debug, BuildStep
 
 import pytest # would be sad to have known failing tests
-import xyz.parser.ast as AST
 
-class BuildStep(Enum):
-    TOKENIZE = 0
-    PARSE = 1
-    EXECUTE = 2
-
-def build_program(file_data: StringIO, step: BuildStep = BuildStep.EXECUTE):
-    # need to pretend we are a file
-    if isinstance(file_data, str):
-        file_data = StringIO(file_data)
-
-    result = tokenize(file_data)
-    if isinstance(result, Error):
-        result.print()
-    elif step == BuildStep.TOKENIZE:
-        print(result)
-    else:
-        tree = parse(file_data, TokenIterator(result))
-        if isinstance(tree, Error):
-            tree.print()
-        elif step == BuildStep.PARSE:
-            print(tree)
-        else:
-            interp = XYZInterperter()
-            print(interp.execute_ast(tree))
-            exit()
-    return tree
+DEBUG = False
+ENV = XYZEnvironment({
+    "io": {
+        "print": lambda *args: print(*args)
+    }
+})
 
 def run_tests():
     retcode = pytest.main(["tests/"])
     assert retcode == 0, "Tests failed! see output"
 
 def main():
-    run_tests() 
+    if DEBUG: run_tests() 
 
     if len(argv) < 2:
         print("No XYZ source file provided!")
@@ -55,7 +27,10 @@ def main():
         print("File %s does not exist!" % argv[1])
     else:
         with open(argv[1], "r") as file:
-            build_program(StringIO(file.read()))
+            if DEBUG:
+                debug(file.read(), BuildStep.EXECUTE, ENV)
+            else:
+                print(eval(file.read(), ENV))
 
 
 if __name__ == "__main__":

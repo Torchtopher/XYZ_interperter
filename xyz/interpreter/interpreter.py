@@ -1,6 +1,7 @@
+from types import FunctionType
 import xyz.parser.ast as AST
 import numbers
-from xyz.interpreter.types import XYZType, Scope, FunctionInfo, ensure_concat, ensure_int, ensure_num, ensure_table, ensure_func
+from xyz.interpreter.types import XYZType, Scope, ensure_concat, ensure_int, ensure_num, ensure_table, ensure_func
 from typing import NamedTuple, TypeAlias, assert_type
 
 from xyz.interpreter.scoped_env import Scope
@@ -52,41 +53,47 @@ class AccessorResult(NamedTuple):
 class BreakSignal(Exception):
     pass
 
-class XYZInterperter:
+class XYZInterpreter:
 
-    def __init__(self, GVT: Scope|None = None):
+    debug: bool
+
+    def __init__(self, GVT: Scope|None = None, debug: bool = False):
         # global variable table
         self.GVT: Scope = Scope(None, "global") if not GVT else GVT
 
         # current variable table
         self.CVT: Scope = self.GVT
 
+        self.debug = debug
+
     # mimics lua in the following ways
     # if len(args) < len(paramaters), fills the rest of the params with None
     # if len(args) > len(parameters), remaining args are ignored, unless there is ...something
-    def _call_func(self, func_info: FunctionInfo, args: list):
-        old_cvt = self.CVT
+    def xyz_function(self, params: list[str], extra: str | None, block: AST.Block, scope: Scope, name: str):
+        def call(*args: list[XYZType]):
+            old_cvt = self.CVT
 
-        try:
-            self.CVT = Scope(func_info.scope, func_info.name)
-            for var, val in zip_longest(func_info.parameters, args):
-                if var is None:
-                    break
-                self.CVT.define(var, val)
+            try:
+                self.CVT = Scope(scope, name)
+                for var, val in zip_longest(params, args):
+                    if var is None:
+                        break
+                    self.CVT.define(var, val)
 
-            # want to bind all the rest of the variables to whatever extra is
-            if func_info.extra:
-                val_list = args[len(func_info.parameters):]
-                val_dict = {}
-                for i in range(len(val_list)):
-                    val_dict[i] = val_list[i]
+                # want to bind all the rest of the variables to whatever extra is
+                if extra:
+                    val_list = args[len(params):]
+                    val_dict = {}
+                    for i in range(len(val_list)):
+                        val_dict[i] = val_list[i]
 
-                self.CVT.define(func_info.extra, val_dict)
+                    self.CVT.define(extra, val_dict)
 
-            return self.execute_ast(func_info.block)
+                return self.execute_ast(block)
 
-        finally:
-            self.CVT = old_cvt
+            finally:
+                self.CVT = old_cvt
+        return call
 
     def eval_expression(self, expr: AST.Expression) -> XYZType:
         if isinstance(expr, AST.LitFalse):
@@ -114,18 +121,18 @@ class XYZInterperter:
                 accessor_res: AccessorResult = self.find_accessor(expr.source)
                 assert isinstance(accessor_res.table, dict)
                 args.append(accessor_res.table) # table that holds the function we are about to call
-                func_info: FunctionInfo = accessor_res.table[accessor_res.key] # type: ignore # genuinely the best i could do
+                func: FunctionType = accessor_res.table[accessor_res.key] # type: ignore # genuinely the best i could do
             else:
-                func_info: FunctionInfo = ensure_func(self.eval_expression(expr.source))
+                func: FunctionType = ensure_func(self.eval_expression(expr.source))
 
-            assert type(func_info) == FunctionInfo, f"Trying to call something that is not a function {expr.source}"
+            assert type(func) == FunctionType, f"Trying to call something that is not a function {expr.source}"
             for arg in expr.args:
                 args.append(self.eval_expression(arg))
 
-            return self._call_func(func_info, args)
+            return func(*args)
 
         elif isinstance(expr, AST.Lambda):
-            return FunctionInfo(expr.parameters, expr.extra, expr.block, self.CVT)
+            return self.xyz_function(expr.parameters, expr.extra, expr.block, self.CVT, "lambda")
 
 
         elif isinstance(expr, AST.UnaryExpression):
@@ -331,9 +338,9 @@ class XYZInterperter:
         return AccessorResult(ensure_table(container), key)
 
 
-    def execute_ast(self, ast: AST.File):
+    def execute_ast(self, ast: AST.File) -> XYZType:
         for statement in ast.statements:
             self.exec_statement(statement)
-            print(self.GVT)
+            if self.debug: print(self.GVT)
 
         return self.eval_expression(ast.return_statement)

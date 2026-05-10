@@ -1,1 +1,2 @@
-import xyz.parser.ast as AST
+from xyz.interpreter.interpreter import XYZInterpreter
+from xyz.interpreter.types import XYZType

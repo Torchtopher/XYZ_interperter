@@ -1,0 +1,2 @@
+io.print("hello from XYZ!")
+return 0

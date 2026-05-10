@@ -2,7 +2,7 @@ import pytest
 
 import xyz.parser.ast as AST
 
-from xyz.interpreter.interpreter import XYZInterperter
+from xyz.interpreter.interpreter import XYZInterpreter
 from xyz.interpreter.scoped_env import Scope
 
 
@@ -19,20 +19,20 @@ def scope_values(env: Scope):
 
 def eval_expr(expr: AST.Expression, global_var_table: dict | Scope | None = None):
     env = global_var_table if isinstance(global_var_table, Scope) else scope(global_var_table)
-    interpreter = XYZInterperter(env)
+    interpreter = XYZInterpreter(env)
     return interpreter.eval_expression(expr)
 
 
 def exec_stmt(statement: AST.Statement, global_var_table: dict | Scope | None = None):
     env = global_var_table if isinstance(global_var_table, Scope) else scope(global_var_table)
-    interpreter = XYZInterperter(env)
+    interpreter = XYZInterpreter(env)
     interpreter.exec_statement(statement)
     return interpreter.GVT
 
 
 def eval_file(ast_file: AST.File, global_var_table: dict | Scope | None = None):
     env = global_var_table if isinstance(global_var_table, Scope) else scope(global_var_table)
-    interpreter = XYZInterperter(env)
+    interpreter = XYZInterpreter(env)
     for statement in ast_file.statements:
         interpreter.exec_statement(statement)
     return interpreter.eval_expression(ast_file.return_statement), interpreter.GVT
