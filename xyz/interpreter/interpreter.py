@@ -113,13 +113,11 @@ class XYZInterperter:
                     val = self.eval_expression(val)
                     table[key] = val
                 return table
-            
-            # f()
+
             case AST.FunctionCall:
-                # whether the function is called with `:` instead of `.` to pass the containing table as the first argument
-            
                 args = []
 
+                # whether the function is called with `:` instead of `.` to pass the containing table as the first argument
                 if expr.method:
                     assert type(expr.source) == AST.Access, "Expected function called with ':' (a:b()) to have an access" 
                     accessor_res: AccessorResult = self.find_accessor(expr.source) 
@@ -285,6 +283,10 @@ class XYZInterperter:
                         self.execute_ast(stmnt.block)
                 finally:
                     self.CVT = old_cvt
+            
+            # want to just call the function for side effects
+            case AST.FunctionCall:
+                self.eval_expression(stmnt)
 
     # basically the same as evaulating an expression, but this time give back the container and key
     # so the caller can set the value themseleves 

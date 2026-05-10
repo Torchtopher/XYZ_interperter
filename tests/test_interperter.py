@@ -535,3 +535,458 @@ def test_for_loop_does_not_run_body_when_range_is_empty():
 
     assert result == 0
     assert scope_values(env) == {"sum": 0}
+
+
+def test_function_sums_one_to_ten_and_returns_result():
+    # const a = function()
+    #     let sum = 0
+    #     for i = 1, 11, 1 do
+    #         set sum = sum + i
+    #     end
+    #     return sum
+    # end
+    # return a()
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("a")],
+                value=[
+                    AST.Lambda(
+                        parameters=[],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[
+                                AST.Definition(
+                                    const=False,
+                                    var=[AST.Var("sum")],
+                                    value=[AST.LitInt(0)],
+                                ),
+                                AST.ForLoop(
+                                    var="i",
+                                    start=AST.LitInt(1),
+                                    end=AST.LitInt(11),
+                                    step=AST.LitInt(1),
+                                    block=AST.Block(
+                                        statements=[
+                                            AST.SetStatement(
+                                                var=[AST.Access(AST.Var("sum"), None)],
+                                                value=[
+                                                    AST.BinaryExpression(
+                                                        AST.BinExpType.ADD,
+                                                        AST.Var("sum"),
+                                                        AST.Var("i"),
+                                                    )
+                                                ],
+                                            )
+                                        ],
+                                        return_statement=AST.LitNil(None),
+                                    ),
+                                ),
+                            ],
+                            return_statement=AST.Var("sum"),
+                        ),
+                    )
+                ],
+            )
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Var("a"),
+            args=[],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 55
+
+
+def test_function_call_binds_parameters_and_returns_expression():
+    # const add = function(a, b)
+    #     return a + b
+    # end
+    # return add(2, 3)
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("add")],
+                value=[
+                    AST.Lambda(
+                        parameters=["a", "b"],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[],
+                            return_statement=AST.BinaryExpression(
+                                AST.BinExpType.ADD,
+                                AST.Var("a"),
+                                AST.Var("b"),
+                            ),
+                        ),
+                    )
+                ],
+            )
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Var("add"),
+            args=[AST.LitInt(2), AST.LitInt(3)],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 5
+
+
+def test_function_call_missing_arguments_are_bound_to_nil():
+    # const missing_second = function(a, b)
+    #     return b == nil
+    # end
+    # return missing_second(1)
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("missing_second")],
+                value=[
+                    AST.Lambda(
+                        parameters=["a", "b"],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[],
+                            return_statement=AST.BinaryExpression(
+                                AST.BinExpType.EQUAL,
+                                AST.Var("b"),
+                                AST.LitNil(None),
+                            ),
+                        ),
+                    )
+                ],
+            )
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Var("missing_second"),
+            args=[AST.LitInt(1)],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result is True
+
+
+def test_function_call_ignores_extra_arguments_without_extra_binding():
+    # const first = function(a)
+    #     return a
+    # end
+    # return first(1, 99)
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("first")],
+                value=[
+                    AST.Lambda(
+                        parameters=["a"],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[],
+                            return_statement=AST.Var("a"),
+                        ),
+                    )
+                ],
+            )
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Var("first"),
+            args=[AST.LitInt(1), AST.LitInt(99)],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 1
+
+
+def test_function_call_captures_extra_arguments_in_table():
+    # const third_arg = function(first, ...rest)
+    #     return rest[1]
+    # end
+    # return third_arg(10, 20, 30)
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("third_arg")],
+                value=[
+                    AST.Lambda(
+                        parameters=["first"],
+                        extra="rest",
+                        block=AST.Block(
+                            statements=[],
+                            return_statement=AST.Access(AST.Var("rest"), AST.LitInt(1)),
+                        ),
+                    )
+                ],
+            )
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Var("third_arg"),
+            args=[AST.LitInt(10), AST.LitInt(20), AST.LitInt(30)],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 30
+
+
+def test_function_closure_reads_outer_variable():
+    # let x = 10
+    # const read_x = function()
+    #     return x
+    # end
+    # set x = 11
+    # return read_x()
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("x")],
+                value=[AST.LitInt(10)],
+            ),
+            AST.Definition(
+                const=True,
+                var=[AST.Var("read_x")],
+                value=[
+                    AST.Lambda(
+                        parameters=[],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[],
+                            return_statement=AST.Var("x"),
+                        ),
+                    )
+                ],
+            ),
+            AST.SetStatement(
+                var=[AST.Access(AST.Var("x"), None)],
+                value=[AST.LitInt(11)],
+            ),
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Var("read_x"),
+            args=[],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 11
+
+
+def test_function_closure_can_update_outer_variable():
+    # let count = 0
+    # const inc = function()
+    #     set count = count + 1
+    #     return count
+    # end
+    # return inc() + inc()
+    inc_call = AST.FunctionCall(method=False, source=AST.Var("inc"), args=[])
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("count")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.Definition(
+                const=True,
+                var=[AST.Var("inc")],
+                value=[
+                    AST.Lambda(
+                        parameters=[],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[
+                                AST.SetStatement(
+                                    var=[AST.Access(AST.Var("count"), None)],
+                                    value=[
+                                        AST.BinaryExpression(
+                                            AST.BinExpType.ADD,
+                                            AST.Var("count"),
+                                            AST.LitInt(1),
+                                        )
+                                    ],
+                                )
+                            ],
+                            return_statement=AST.Var("count"),
+                        ),
+                    )
+                ],
+            ),
+        ],
+        return_statement=AST.BinaryExpression(
+            AST.BinExpType.ADD,
+            inc_call,
+            inc_call,
+        ),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 3
+    assert env.get("count") == 2
+
+
+def test_function_closure_returned_from_function_keeps_captured_scope():
+    # const make_adder = function(x)
+    #     return function(y)
+    #         return x + y
+    #     end
+    # end
+    # const add_five = make_adder(5)
+    # return add_five(3)
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("make_adder")],
+                value=[
+                    AST.Lambda(
+                        parameters=["x"],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[],
+                            return_statement=AST.Lambda(
+                                parameters=["y"],
+                                extra=None,
+                                block=AST.Block(
+                                    statements=[],
+                                    return_statement=AST.BinaryExpression(
+                                        AST.BinExpType.ADD,
+                                        AST.Var("x"),
+                                        AST.Var("y"),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    )
+                ],
+            ),
+            AST.Definition(
+                const=True,
+                var=[AST.Var("add_five")],
+                value=[
+                    AST.FunctionCall(
+                        method=False,
+                        source=AST.Var("make_adder"),
+                        args=[AST.LitInt(5)],
+                    )
+                ],
+            ),
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Var("add_five"),
+            args=[AST.LitInt(3)],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 8
+
+
+def test_method_call_passes_receiver_as_first_argument():
+    # const obj = {
+    #     "base": 10,
+    #     "add": function(self, x)
+    #         return self.base + x
+    #     end,
+    # }
+    # return obj:add(5)
+    method = AST.Lambda(
+        parameters=["self", "x"],
+        extra=None,
+        block=AST.Block(
+            statements=[],
+            return_statement=AST.BinaryExpression(
+                AST.BinExpType.ADD,
+                AST.Access(AST.Var("self"), AST.LitString("base")),
+                AST.Var("x"),
+            ),
+        ),
+    )
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("obj")],
+                value=[
+                    AST.LitTable(
+                        [
+                            (AST.LitString("base"), AST.LitInt(10)),
+                            (AST.LitString("add"), method),
+                        ]
+                    )
+                ],
+            )
+        ],
+        return_statement=AST.FunctionCall(
+            method=True,
+            source=AST.Access(AST.Var("obj"), AST.LitString("add")),
+            args=[AST.LitInt(5)],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 15
+
+
+def test_normal_dot_call_does_not_pass_receiver():
+    # const obj = {
+    #     "id": function(x)
+    #         return x
+    #     end,
+    # }
+    # return obj.id(7)
+    method = AST.Lambda(
+        parameters=["x"],
+        extra=None,
+        block=AST.Block(
+            statements=[],
+            return_statement=AST.Var("x"),
+        ),
+    )
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("obj")],
+                value=[
+                    AST.LitTable(
+                        [
+                            (AST.LitString("id"), method),
+                        ]
+                    )
+                ],
+            )
+        ],
+        return_statement=AST.FunctionCall(
+            method=False,
+            source=AST.Access(AST.Var("obj"), AST.LitString("id")),
+            args=[AST.LitInt(7)],
+        ),
+    )
+
+    result, _ = eval_file(ast_file)
+
+    assert result == 7
