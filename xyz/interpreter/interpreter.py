@@ -4,6 +4,7 @@ from xyz.interpreter.helpers import ensure_concat, ensure_int, ensure_num
 from typing import NamedTuple
 
 from xyz.interpreter.scoped_env import Scope
+from itertools import zip_longest
 
 TEST_AST: AST.File = AST.Block(
       statements=[
@@ -49,9 +50,13 @@ class AccessorResult(NamedTuple):
     key: any
 
 class FunctionInfo():
-    scope = {}
-    ast = AST.Block
 
+    def __init__(self, params, extra, block, scope, name="Unnamed Function"):
+        self.parameters: list[str] = params
+        self.extra: str | None = extra
+        self.block: AST.Block = block
+        self.scope: Scope = scope
+        self.name: str = name
 
 # {f: }
 
@@ -63,6 +68,33 @@ class XYZInterperter:
         
         # current variable table
         self.CVT: Scope = self.GVT 
+
+    # mimics lua in the following ways
+    # if len(args) < len(paramaters), fills the rest of the params with None
+    # if len(args) > len(parameters), remaining args are ignored, unless there is ...something
+    def _call_func(self, func_info: FunctionInfo, args: list):
+        old_cvt = self.CVT
+
+        try:
+            self.CVT = Scope(func_info.scope, func_info.name)
+            for var, val in zip_longest(func_info.parameters, args):
+                if var is None:
+                    break
+                self.CVT.define(var, val)
+            
+            # want to bind all the rest of the variables to whatever extra is
+            if func_info.extra:
+                val_list = args[len(func_info.parameters):]
+                val_dict = {}
+                for i in range(len(val_list)):
+                    val_dict[i] = val_list[i]
+
+                self.CVT.define(func_info.extra, val_dict)
+
+            return self.execute_ast(func_info.block)
+
+        finally:
+            self.CVT = old_cvt
 
     def eval_expression(self, expr: AST.Expression):
         match type(expr):
@@ -84,9 +116,27 @@ class XYZInterperter:
             
             # f()
             case AST.FunctionCall:
-                print("ERROR NOT IMPLEMENTED YET")
+                # whether the function is called with `:` instead of `.` to pass the containing table as the first argument
+            
+                args = []
+
+                if expr.method:
+                    assert type(expr.source) == AST.Access, "Expected function called with ':' (a:b()) to have an access" 
+                    accessor_res: AccessorResult = self.find_accessor(expr.source) 
+                    args = [accessor_res.table] # table that holds the function we are about to call
+                    func_info: FunctionInfo = accessor_res.table[accessor_res.key]
+                else:
+                    func_info: FunctionInfo = self.eval_expression(expr.source)
+                
+                assert type(func_info) == FunctionInfo, f"Trying to call something that is not a function {expr.source}"
+                for arg in expr.args:
+                    args.append(self.eval_expression(arg))
+
+                return self._call_func(func_info, args)
+
             case AST.Lambda:
-                print("ERROR NOT IMPLEMENTED YET")
+                return FunctionInfo(expr.parameters, expr.extra, expr.block, self.CVT)
+                
 
             case AST.UnaryExpression:
                 val = self.eval_expression(expr.right)
@@ -201,7 +251,7 @@ class XYZInterperter:
 
             case AST.SetStatement:
                 if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
-                var: AST.VarExpr
+                var: AST.Access
                 expr: AST.Expression
                 for var, expr in zip(stmnt.var, stmnt.value, strict=True):
                     access: AccessorResult = self.find_accessor(var)
@@ -222,6 +272,7 @@ class XYZInterperter:
                 start = self.eval_expression(stmnt.start)
                 end = self.eval_expression(stmnt.end)
                 step = self.eval_expression(stmnt.step)
+                assert type(start) == type(end) == type(step) == int, "For loops must have interger parameters!"
 
                 old_cvt = self.CVT
 

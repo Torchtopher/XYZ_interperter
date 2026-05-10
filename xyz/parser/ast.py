@@ -79,7 +79,7 @@ type ReturnStatement = Expression
 
 class Block(NamedTuple):
     statements: list[Statement]
-    return_statement: ReturnStatement
+    return_statement: ReturnStatement # assumed this return statement is none for things for loops
 
 class Lambda(NamedTuple):
     parameters: list[str]
