@@ -1505,7 +1505,7 @@ def test_unary_size_rejects_non_table_values():
 
 def test_function_call_rejects_non_function_source():
     # return 1()
-    with pytest.raises(AssertionError, match="not a function"):
+    with pytest.raises(AssertionError, match="must be a function"):
         eval_expr(
             AST.FunctionCall(
                 method=False,

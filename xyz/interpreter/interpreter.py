@@ -1,7 +1,7 @@
 import xyz.parser.ast as AST
 import numbers
-from xyz.interpreter.helpers import ensure_concat, ensure_int, ensure_num
-from typing import NamedTuple
+from xyz.interpreter.types import XYZType, Scope, FunctionInfo, ensure_concat, ensure_int, ensure_num, ensure_table, ensure_func
+from typing import NamedTuple, TypeAlias, assert_type
 
 from xyz.interpreter.scoped_env import Scope
 from itertools import zip_longest
@@ -47,28 +47,19 @@ TEST_AST: AST.File = AST.Block(
 
 class AccessorResult(NamedTuple):
     table: Scope | dict
-    key: any
-
-class FunctionInfo():
-
-    def __init__(self, params, extra, block, scope, name="Unnamed Function"):
-        self.parameters: list[str] = params
-        self.extra: str | None = extra
-        self.block: AST.Block = block
-        self.scope: Scope = scope
-        self.name: str = name
+    key: XYZType
 
 class BreakSignal(Exception):
     pass
 
 class XYZInterperter:
 
-    def __init__(self, GVT:Scope=None):
+    def __init__(self, GVT: Scope|None = None):
         # global variable table
         self.GVT: Scope = Scope(None, "global") if not GVT else GVT
-        
+
         # current variable table
-        self.CVT: Scope = self.GVT 
+        self.CVT: Scope = self.GVT
 
     # mimics lua in the following ways
     # if len(args) < len(paramaters), fills the rest of the params with None
@@ -82,7 +73,7 @@ class XYZInterperter:
                 if var is None:
                     break
                 self.CVT.define(var, val)
-            
+
             # want to bind all the rest of the variables to whatever extra is
             if func_info.extra:
                 val_list = args[len(func_info.parameters):]
@@ -97,275 +88,252 @@ class XYZInterperter:
         finally:
             self.CVT = old_cvt
 
-    def eval_expression(self, expr: AST.Expression):
-        match type(expr):
-            case AST.LitFalse:
-                return False
-            case AST.LitTrue:
-                return True
-            case AST.LitNil:
-                return None
-            case AST.LitInt | AST.LitFloat | AST.LitString:
-                return expr.value
-            case AST.LitTable:
-                table = {}
-                for key, val in expr.value:
-                    key = self.eval_expression(key)
-                    val = self.eval_expression(val)
-                    table[key] = val
-                return table
+    def eval_expression(self, expr: AST.Expression) -> XYZType:
+        if isinstance(expr, AST.LitFalse):
+            return False
+        elif isinstance(expr, AST.LitTrue):
+            return True
+        elif isinstance(expr, AST.LitNil):
+            return None
+        elif isinstance(expr, AST.LitInt | AST.LitFloat | AST.LitString):
+            return expr.value
+        elif isinstance(expr, AST.LitTable):
+            table: dict[XYZType, XYZType] = {}
+            for key, val in expr.value:
+                key = self.eval_expression(key)
+                val = self.eval_expression(val)
+                table[key] = val
+            return table
 
-            case AST.FunctionCall:
-                args = []
+        elif isinstance(expr, AST.FunctionCall):
+            args = []
 
-                # whether the function is called with `:` instead of `.` to pass the containing table as the first argument
-                if expr.method:
-                    assert type(expr.source) == AST.Access, "Expected function called with ':' (a:b()) to have an access" 
-                    accessor_res: AccessorResult = self.find_accessor(expr.source) 
-                    args = [accessor_res.table] # table that holds the function we are about to call
-                    func_info: FunctionInfo = accessor_res.table[accessor_res.key]
-                else:
-                    func_info: FunctionInfo = self.eval_expression(expr.source)
-                
-                assert type(func_info) == FunctionInfo, f"Trying to call something that is not a function {expr.source}"
-                for arg in expr.args:
-                    args.append(self.eval_expression(arg))
+            # whether the function is called with `:` instead of `.` to pass the containing table as the first argument
+            if expr.method:
+                assert isinstance(expr.source, AST.Access), "Expected function called with ':' (a:b()) to have an access"
+                accessor_res: AccessorResult = self.find_accessor(expr.source)
+                assert isinstance(accessor_res.table, dict)
+                args.append(accessor_res.table) # table that holds the function we are about to call
+                func_info: FunctionInfo = accessor_res.table[accessor_res.key] # type: ignore # genuinely the best i could do
+            else:
+                func_info: FunctionInfo = ensure_func(self.eval_expression(expr.source))
 
-                return self._call_func(func_info, args)
+            assert type(func_info) == FunctionInfo, f"Trying to call something that is not a function {expr.source}"
+            for arg in expr.args:
+                args.append(self.eval_expression(arg))
 
-            case AST.Lambda:
-                return FunctionInfo(expr.parameters, expr.extra, expr.block, self.CVT)
-                
+            return self._call_func(func_info, args)
 
-            case AST.UnaryExpression:
-                val = self.eval_expression(expr.right)
-                match expr.type:
-                    case AST.UnExpType.NOT:
-                        assert val is True or val is False or val is None, f"Can not take unary not of type {type(val)}"
-                        return not val
-                        
-                    case AST.UnExpType.NEG:
-                        assert isinstance(val, numbers.Number), f"attempt to perform arithmetic on a {type(val)} value"
-                        return -val
-                    
-                    case AST.UnExpType.SIZE:
-                        assert type(val) == dict, f"attempt to get length of a {type(val)} value"
-                        return len(val)
+        elif isinstance(expr, AST.Lambda):
+            return FunctionInfo(expr.parameters, expr.extra, expr.block, self.CVT)
 
-            case AST.BinaryExpression:
-                left = self.eval_expression(expr.left)
-                right = self.eval_expression(expr.right)
-                match expr.type:
-                    # ===== can only be performed with numbers (floats and ints) ========
-                    case AST.BinExpType.ADD: # + 
-                        ensure_num([left, right])
-                        return left + right
-                    case AST.BinExpType.SUB: # -
-                        ensure_num([left, right])
-                        return left - right
-                    case AST.BinExpType.MUL: # *
-                        ensure_num([left, right])
-                        return left * right
-                    case AST.BinExpType.DIV: # /
-                        ensure_num([left, right])
-                        return left / right
-                    case AST.BinExpType.FLOORDIV: # //
-                        ensure_num([left, right])
-                        return left // right
-                    case AST.BinExpType.EXP: # **
-                        ensure_num([left, right])
-                        return left ** right
-                    case AST.BinExpType.MOD: # %
-                        ensure_num([left, right])
-                        return left % right
-                    
-                    case AST.BinExpType.LESS: 
-                        ensure_num([left, right])
-                        return left < right
-                    case AST.BinExpType.LEQ:
-                        ensure_num([left, right])
-                        return left <= right
-                    case AST.BinExpType.GREATER:
-                        ensure_num([left, right])
-                        return left > right
-                    case AST.BinExpType.GEQ:
-                        ensure_num([left, right])
-                        return left >= right
 
-                    # ===== can only be perfomed with 2 ints ========
-                    case AST.BinExpType.BIT_AND:
-                        ensure_int([left, right])
-                        return left & right
-                    case AST.BinExpType.BIT_XOR:
-                        ensure_int([left, right])
-                        return left ^ right
-                    case AST.BinExpType.BIT_OR:
-                        ensure_int([left, right])
-                        return left | right
-                    case AST.BinExpType.LSHIFT:
-                        ensure_int([left, right])
-                        return left << right
-                    case AST.BinExpType.RSHIFT:
-                        ensure_int([left, right])
-                        return left >> right
+        elif isinstance(expr, AST.UnaryExpression):
+            val = self.eval_expression(expr.right)
+            match expr.type:
+                case AST.UnExpType.NOT:
+                    assert val is True or val is False or val is None, f"Can not take unary not of type {type(val)}"
+                    return not val
 
-                    # all objects
-                    case AST.BinExpType.EQUAL:
-                        return left == right
-                    case AST.BinExpType.NEQ:
-                        return left != right
-                    case AST.BinExpType.AND:
-                        return left and right
-                    case AST.BinExpType.OR:
-                        return left or right
-                    
-                    # works with strings and numbers only
-                    case AST.BinExpType.CONCAT:
-                        ensure_concat([left, right])
-                        return str(left) + str(right)
-                    case _:
-                        print(f"ERROR: Unhandled binary expression with type {expr.type}")
-                        exit(-1)
+                case AST.UnExpType.NEG:
+                    assert isinstance(val, int | float), f"attempt to perform arithmetic on a {type(val)} value"
+                    return -val
 
-            case AST.Var:
-                return self.CVT.get(expr.name)
-            
-            case AST.Access:
-                container = self.eval_expression(expr.source)
-                index = self.eval_expression(expr.index)
-                return container if index == None else (container[index] if index in container else None)
+                case AST.UnExpType.SIZE:
+                    assert isinstance(val, dict), f"attempt to get length of a {type(val)} value"
+                    return len(val)
 
-            case _:
-                print(f"UNHANDLED EXPR CASE: {type(expr)}")
-                
-                    
+        elif isinstance(expr, AST.BinaryExpression):
+            left = self.eval_expression(expr.left)
+            right = self.eval_expression(expr.right)
+            match expr.type:
+                # ===== can only be performed with numbers (floats and ints) ========
+                case AST.BinExpType.ADD: # +
+                    return ensure_num(left) + ensure_num(right)
+                case AST.BinExpType.SUB: # -
+                    return ensure_num(left) - ensure_num(right)
+                case AST.BinExpType.MUL: # *
+                    return ensure_num(left) * ensure_num(right)
+                case AST.BinExpType.DIV: # /
+                    return ensure_num(left) / ensure_num(right)
+                case AST.BinExpType.FLOORDIV: # //
+                    return int(ensure_num(left) // ensure_num(right))
+                case AST.BinExpType.EXP: # **
+                    return ensure_num(left) ** ensure_num(right)
+                case AST.BinExpType.MOD: # %
+                    return ensure_num(left) % ensure_num(right)
+
+                case AST.BinExpType.LESS:
+                    return ensure_num(left) < ensure_num(right)
+                case AST.BinExpType.LEQ:
+                    return ensure_num(left) <= ensure_num(right)
+                case AST.BinExpType.GREATER:
+                    return ensure_num(left) > ensure_num(right)
+                case AST.BinExpType.GEQ:
+                    return ensure_num(left) >= ensure_num(right)
+
+                # ===== can only be perfomed with 2 ints ========
+                case AST.BinExpType.BIT_AND:
+                    return ensure_int(left) & ensure_int(right)
+                case AST.BinExpType.BIT_XOR:
+                    return ensure_int(left) ^ ensure_int(right)
+                case AST.BinExpType.BIT_OR:
+                    return ensure_int(left) | ensure_int(right)
+                case AST.BinExpType.LSHIFT:
+                    return ensure_int(left) << ensure_int(right)
+                case AST.BinExpType.RSHIFT:
+                    return ensure_int(left) >> ensure_int(right)
+
+                # all objects
+                case AST.BinExpType.EQUAL:
+                    return left == right
+                case AST.BinExpType.NEQ:
+                    return left != right
+                case AST.BinExpType.AND:
+                    return left and right
+                case AST.BinExpType.OR:
+                    return left or right
+
+                # works with strings and numbers only
+                case AST.BinExpType.CONCAT:
+                    return str(ensure_concat(left)) + str(ensure_concat(right))
+
+        elif isinstance(expr,  AST.Var):
+            return self.CVT.get(expr.name)
+
+        elif isinstance(expr, AST.Access):
+            container = self.eval_expression(expr.source)
+            if expr.index == None: return container
+            index = self.eval_expression(expr.index)
+            return ensure_table(container)[index] if index in ensure_table(container) else None
+
+
     # @TODO add line and character numebrs to the AST so we can give better error messages
     def exec_statement(self, stmnt: AST.Statement):
-        match type(stmnt):
-            case AST.Definition:
-                if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
-                for var, expr in zip(stmnt.var, stmnt.value, strict=True):
-                    val = self.eval_expression(expr)
-                    self.CVT.define(var.name, val, stmnt.const)     
+        if isinstance(stmnt, AST.Definition):
+            if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
+            for var, expr in zip(stmnt.var, stmnt.value, strict=True):
+                val = self.eval_expression(expr)
+                self.CVT.define(var.name, val, stmnt.const)
 
-            case AST.SetStatement:
-                if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
-                var: AST.Access
-                expr: AST.Expression
-                for var, expr in zip(stmnt.var, stmnt.value, strict=True):
-                    access: AccessorResult = self.find_accessor(var)
-                    val = self.eval_expression(expr)
-                    # this means that we are doing assignment to something like
-                    # a = 1
-                    if isinstance(access.table, Scope):
-                        # need to repect const 
-                        access.table.update(access.key, val)
+        elif isinstance(stmnt, AST.SetStatement):
+            if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
+            var: AST.Access
+            expr: AST.Expression
+            for var, expr in zip(stmnt.var, stmnt.value, strict=True):
+                access: AccessorResult = self.find_accessor(var)
+                val = self.eval_expression(expr)
+                # this means that we are doing assignment to something like
+                # a = 1
+                if isinstance(access.table, Scope):
+                    # need to repect const
+                    assert isinstance(access.key, str)
+                    access.table.update(access.key, val)
 
-                    # this case is for something like
-                    # a.b = 2, since eval(a) is a dict with like {"b": 42}
-                    else:
-                        assert type(access.table) == dict, f"how is this: {type(access.table)}" 
-                        access.table[access.key] = val 
-            
-            case AST.ForLoop:
-                start = self.eval_expression(stmnt.start)
-                end = self.eval_expression(stmnt.end)
-                step = self.eval_expression(stmnt.step)
-                assert type(start) == type(end) == type(step) == int, "For loops must have interger parameters!"
+                # this case is for something like
+                # a.b = 2, since eval(a) is a dict with like {"b": 42}
+                else:
+                    assert type(access.table) == dict, f"how is this: {type(access.table)}"
+                    access.table[access.key] = val
 
-                old_cvt = self.CVT
+        elif isinstance(stmnt, AST.ForLoop):
+            start = self.eval_expression(stmnt.start)
+            end = self.eval_expression(stmnt.end)
+            step = self.eval_expression(stmnt.step)
 
-                self.CVT = Scope(self.CVT, "for loop")
-                self.CVT.define(stmnt.var, start)
+            old_cvt = self.CVT
 
-                try: 
-                    for i in range(start, end, step):
-                        self.CVT.update(stmnt.var, i)
-                        try:
-                            self.execute_ast(stmnt.block)
-                        except BreakSignal:
-                            break
-                finally:
-                    self.CVT = old_cvt
-            
-            case AST.FunctionCall:
-                # want to just call the function for side effects
-                self.eval_expression(stmnt)
+            self.CVT = Scope(self.CVT, "for loop")
+            self.CVT.define(stmnt.var, start)
 
-            case AST.Break:
-                raise BreakSignal
-            
-            case AST.Block:
-                old_cvt = self.CVT
+            try:
+                for i in range(ensure_int(start), ensure_int(end), ensure_int(step)):
+                    self.CVT.update(stmnt.var, i)
+                    try:
+                        self.execute_ast(stmnt.block)
+                    except BreakSignal:
+                        break
+            finally:
+                self.CVT = old_cvt
 
-                self.CVT = Scope(self.CVT, "inner block")
-                try:
-                    self.execute_ast(stmnt)
-                finally:
-                    self.CVT = old_cvt
+        elif isinstance(stmnt, AST.FunctionCall):
+            # want to just call the function for side effects
+            self.eval_expression(stmnt)
 
-            case AST.WhileLoop:
-                old_cvt = self.CVT
+        elif isinstance(stmnt, AST.Break):
+            raise BreakSignal
 
-                self.CVT = Scope(self.CVT, "While loop")
-                try:
-                    while (self.eval_expression(stmnt.condition)):
-                        try:
-                            self.execute_ast(stmnt.block)
-                        except BreakSignal:
-                            break
-                finally:
-                    self.CVT = old_cvt
-            
-            case AST.RepeatLoop:
-                old_cvt = self.CVT
+        elif isinstance(stmnt, AST.Block):
+            old_cvt = self.CVT
 
-                self.CVT = Scope(self.CVT, "Repeat loop")
-                try:
-                    while True:
-                        try:
-                            self.execute_ast(stmnt.block)
-                        except BreakSignal:
-                            break
+            self.CVT = Scope(self.CVT, "inner block")
+            try:
+                self.execute_ast(stmnt)
+            finally:
+                self.CVT = old_cvt
 
-                        if self.eval_expression(stmnt.block): break
-                finally:
-                    self.CVT = old_cvt
+        elif isinstance(stmnt, AST.WhileLoop):
+            old_cvt = self.CVT
 
-            case AST.IfStatement:
-                old_cvt = self.CVT
+            self.CVT = Scope(self.CVT, "While loop")
+            try:
+                while (self.eval_expression(stmnt.condition)):
+                    try:
+                        self.execute_ast(stmnt.block)
+                    except BreakSignal:
+                        break
+            finally:
+                self.CVT = old_cvt
 
-                self.CVT = Scope(self.CVT, "If statement")
-                try:
-                    stop = False
+        elif isinstance(stmnt, AST.RepeatLoop):
+            old_cvt = self.CVT
 
-                    for expr, block in stmnt.conditions:
-                        if (self.eval_expression(expr)):
-                            self.execute_ast(block)
-                            stop = True
-                            break
-                    if not stop and stmnt.else_block:
-                        self.execute_ast(stmnt.else_block)
-                    
-                finally:
-                    self.CVT = old_cvt
+            self.CVT = Scope(self.CVT, "Repeat loop")
+            try:
+                while True:
+                    try:
+                        self.execute_ast(stmnt.block)
+                    except BreakSignal:
+                        break
+
+                    if self.eval_expression(stmnt.condition): break
+            finally:
+                self.CVT = old_cvt
+
+        elif isinstance(stmnt, AST.IfStatement):
+            old_cvt = self.CVT
+
+            self.CVT = Scope(self.CVT, "If statement")
+            try:
+                stop = False
+
+                for expr, block in stmnt.conditions:
+                    if (self.eval_expression(expr)):
+                        self.execute_ast(block)
+                        stop = True
+                        break
+                if not stop and stmnt.else_block:
+                    self.execute_ast(stmnt.else_block)
+
+            finally:
+                self.CVT = old_cvt
 
     # basically the same as evaulating an expression, but this time give back the container and key
-    # so the caller can set the value themseleves 
+    # so the caller can set the value themseleves
     def find_accessor(self, access_expr: AST.Access) -> AccessorResult:
         if access_expr.index is None:
-            assert type(access_expr.source) == AST.Var, "with no index, the expression to be set must be a variable"
+            assert isinstance(access_expr.source, AST.Var), "with no index, the expression to be set must be a variable"
             return AccessorResult(self.CVT, access_expr.source.name)
-        
+
         container = self.eval_expression(access_expr.source)
         key = self.eval_expression(access_expr.index)
 
-        return AccessorResult(container, key)
-            
-            
+        return AccessorResult(ensure_table(container), key)
+
+
     def execute_ast(self, ast: AST.File):
         for statement in ast.statements:
             self.exec_statement(statement)
             print(self.GVT)
-        
+
         return self.eval_expression(ast.return_statement)
