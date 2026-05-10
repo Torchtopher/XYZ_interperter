@@ -1,1 +1,5 @@
+for i = 1,1+1,{2,3,4} do
+	repeat return i*2 until i == 1
+	while true do end
+end
 return a * (b - (c.d.e["d"]["e"]:f())({a,b,c,d = e, 1+1, [1+1] = 2+3})["a"].b())

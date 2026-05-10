@@ -286,25 +286,35 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                 case TT.KEYWORD_DO:
                     statements.append(parse_block(TT.KEYWORD_END, tokens))
                 case TT.KEYWORD_WHILE:
-                    pass
+                    expression: AST.Expression = parse_expression(tokens)
+                    tokens.expect(TT.KEYWORD_DO, source)
+                    statements.append(AST.WhileLoop(expression, parse_block(TT.KEYWORD_END, tokens)))
                 case TT.KEYWORD_REPEAT:
-                    pass
+                    block: AST.Block = parse_block(TT.KEYWORD_UNTIL, tokens)
+                    statements.append(AST.RepeatLoop(parse_expression(tokens), block))
                 case TT.KEYWORD_IF:
                     pass
                 case TT.KEYWORD_FOR:
-                    pass
+                    ident = tokens.expect(TT.IDENT, source)
+                    assert isinstance(ident.name, str)
+                    tokens.expect(TT.SET, source)
+                    start = parse_expression(tokens)
+                    tokens.expect(TT.COMMA, source)
+                    end = parse_expression(tokens)
+                    tokens.expect(TT.COMMA, source)
+                    step = parse_expression(tokens)
+                    tokens.expect(TT.KEYWORD_DO, source)
+                    statements.append(AST.ForLoop(ident.name, start, end, step, parse_block(TT.KEYWORD_END, tokens)))
                 case TT.KEYWORD_FUNCTION:
                     pass
                 case TT.KEYWORD_RETURN:
                     ret = parse_expression(tokens)
                     tokens.expect(until, source)
-                    return AST.Block([], ret)
+                    return AST.Block(statements, ret)
                 case _:
                     # distinguish between assignment and call
                     pass
-        return AST.Block([], AST.LitNil(None))
-
-    print(tokens)
+        return AST.Block(statements, AST.LitNil(None))
 
     try:
         file: AST.File = parse_block(TT.EOF, tokens)
