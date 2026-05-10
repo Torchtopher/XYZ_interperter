@@ -58,7 +58,8 @@ class FunctionInfo():
         self.scope: Scope = scope
         self.name: str = name
 
-# {f: }
+class BreakSignal(Exception):
+    pass
 
 class XYZInterperter:
 
@@ -280,13 +281,73 @@ class XYZInterperter:
                 try: 
                     for i in range(start, end, step):
                         self.CVT.update(stmnt.var, i)
-                        self.execute_ast(stmnt.block)
+                        try:
+                            self.execute_ast(stmnt.block)
+                        except BreakSignal:
+                            break
                 finally:
                     self.CVT = old_cvt
             
-            # want to just call the function for side effects
             case AST.FunctionCall:
+                # want to just call the function for side effects
                 self.eval_expression(stmnt)
+
+            case AST.Break:
+                raise BreakSignal
+            
+            case AST.Block:
+                old_cvt = self.CVT
+
+                self.CVT = Scope(self.CVT, "inner block")
+                try:
+                    self.execute_ast(stmnt)
+                finally:
+                    self.CVT = old_cvt
+
+            case AST.WhileLoop:
+                old_cvt = self.CVT
+
+                self.CVT = Scope(self.CVT, "While loop")
+                try:
+                    while (self.eval_expression(stmnt.condition)):
+                        try:
+                            self.execute_ast(stmnt.block)
+                        except BreakSignal:
+                            break
+                finally:
+                    self.CVT = old_cvt
+            
+            case AST.RepeatLoop:
+                old_cvt = self.CVT
+
+                self.CVT = Scope(self.CVT, "Repeat loop")
+                try:
+                    while True:
+                        try:
+                            self.execute_ast(stmnt.block)
+                        except BreakSignal:
+                            break
+
+                        if self.eval_expression(stmnt.block): break
+                finally:
+                    self.CVT = old_cvt
+
+            case AST.IfStatement:
+                old_cvt = self.CVT
+
+                self.CVT = Scope(self.CVT, "If statement")
+                try:
+                    # if we have an else block, just put it at the end and treat it the same as elseifs
+                    if stmnt.else_block:
+                        stmnt.conditions.append((AST.LitTrue(True), stmnt.else_block))
+
+                    for expr, block in stmnt.conditions:
+                        if (self.eval_expression(expr)):
+                            self.execute_ast(block)
+                            break
+                    
+                finally:
+                    self.CVT = old_cvt
 
     # basically the same as evaulating an expression, but this time give back the container and key
     # so the caller can set the value themseleves 

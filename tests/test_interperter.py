@@ -88,6 +88,13 @@ ACCESS_AND_DEFINITION_AST = AST.Block(
 )
 
 
+# Source shape:
+# let a = {"k": {"b": 99}}
+# const fx_result = {"c": "k"}
+# a[fx_result.c].b = 10
+# return a[fx_result.c].b
+
+
 def literal(value):
     if value is True:
         return AST.LitTrue(True)
@@ -114,10 +121,12 @@ def literal(value):
     ],
 )
 def test_evaluates_literal_expressions(expr, expected):
+    # Source expressions covered: false, true, nil, 12, 12.34, "hello"
     assert eval_expr(expr) == expected
 
 
 def test_evaluates_table_expression():
+    # return {"name": "xyz", 1: true}
     expr = AST.LitTable(
         [
             (AST.LitString("name"), AST.LitString("xyz")),
@@ -145,6 +154,7 @@ def test_evaluates_table_expression():
     ],
 )
 def test_evaluates_unary_expressions(expr, expected):
+    # Source expressions covered: !true, !false, !nil, -10, #{"key": 1}
     assert eval_expr(expr) == expected
 
 
@@ -175,6 +185,9 @@ def test_evaluates_unary_expressions(expr, expected):
     ],
 )
 def test_evaluates_binary_expressions(operator, left, right, expected):
+    # Source expressions covered: 7 + 3, 7 - 3, 7 * 3, 7 / 2,
+    # 7 // 2, 2 ** 3, 7 % 3, comparisons, bit ops, shifts,
+    # equality, and/or, and "x" .. 7.
     expr = AST.BinaryExpression(
         operator,
         literal(left),
@@ -185,16 +198,22 @@ def test_evaluates_binary_expressions(operator, left, right, expected):
 
 
 def test_evaluates_var_expression_from_global_var_table():
+    # let answer = 42
+    # return answer
     assert eval_expr(AST.Var("answer"), {"answer": 42}) == 42
 
 
 def test_evaluates_access_expression():
+    # let table_name = {"field": 99}
+    # return table_name.field
     expr = AST.Access(AST.Var("table_name"), AST.LitString("field"))
     assert eval_expr(expr, {"table_name": {"field": 99}}) == 99
 
 
 def test_evaluates_nested_access_chain_with_access_as_index():
-    # a[f(x).c].b
+    # let a = {"k": {"b": 99}}
+    # let fx_result = {"c": "k"}
+    # return a[fx_result.c].b
     expr = AST.Access(
         AST.Access(
             AST.Var("a"),
@@ -220,6 +239,10 @@ def test_evaluates_nested_access_chain_with_access_as_index():
 
 
 def test_example_ast_defines_values_sets_nested_access_and_returns_result():
+    # let a = {"k": {"b": 99}}
+    # const fx_result = {"c": "k"}
+    # a[fx_result.c].b = 10
+    # return a[fx_result.c].b
     result, env = eval_file(ACCESS_AND_DEFINITION_AST)
 
     assert result == 10
@@ -230,6 +253,7 @@ def test_example_ast_defines_values_sets_nested_access_and_returns_result():
 
 
 def test_definition_creates_let_variable():
+    # let a = 10
     statement = AST.Definition(
         const=False,
         var=[AST.Var("a")],
@@ -243,6 +267,7 @@ def test_definition_creates_let_variable():
 
 
 def test_definition_creates_const_variable():
+    # const a = 10
     statement = AST.Definition(
         const=True,
         var=[AST.Var("a")],
@@ -256,6 +281,7 @@ def test_definition_creates_const_variable():
 
 
 def test_definition_creates_multiple_variables():
+    # let a, b = 1, "two"
     statement = AST.Definition(
         const=False,
         var=[AST.Var("a"), AST.Var("b")],
@@ -266,6 +292,8 @@ def test_definition_creates_multiple_variables():
 
 
 def test_set_statement_replaces_existing_variable():
+    # let a = 10
+    # a = 20
     statement = AST.SetStatement(
         [AST.Access(AST.Var("a"), None)],
         [AST.LitInt(20)],
@@ -275,6 +303,8 @@ def test_set_statement_replaces_existing_variable():
 
 
 def test_set_statement_evaluates_value_expression_before_assignment():
+    # let a = 0
+    # a = 2 + 3
     statement = AST.SetStatement(
         [AST.Access(AST.Var("a"), None)],
         [
@@ -290,6 +320,8 @@ def test_set_statement_evaluates_value_expression_before_assignment():
 
 
 def test_set_statement_assigns_into_existing_table():
+    # let a = {}
+    # a.b = 10
     statement = AST.SetStatement(
         [AST.Access(AST.Var("a"), AST.LitString("b"))],
         [AST.LitInt(10)],
@@ -299,6 +331,8 @@ def test_set_statement_assigns_into_existing_table():
 
 
 def test_set_statement_assigns_into_nested_access_target():
+    # let a = {"b": {}}
+    # a.b.c = 10
     statement = AST.SetStatement(
         [
             AST.Access(
@@ -315,6 +349,9 @@ def test_set_statement_assigns_into_nested_access_target():
 
 
 def test_set_statement_assigns_with_access_expression_as_index():
+    # let a = {"k": 1}
+    # let fx_result = {"c": "k"}
+    # a[fx_result.c] = 10
     statement = AST.SetStatement(
         [
             AST.Access(
@@ -336,6 +373,9 @@ def test_set_statement_assigns_with_access_expression_as_index():
 
 
 def test_set_statement_assigns_into_nested_target_with_computed_inner_index():
+    # let a = {"k": {"b": 99}}
+    # let fx_result = {"c": "k"}
+    # a[fx_result.c].b = 10
     statement = AST.SetStatement(
         [
             AST.Access(
@@ -360,6 +400,9 @@ def test_set_statement_assigns_into_nested_target_with_computed_inner_index():
 
 
 def test_set_statement_assigns_multiple_existing_targets():
+    # let a = 0
+    # let table = {}
+    # a, table.field = 1, "value"
     statement = AST.SetStatement(
         [
             AST.Access(AST.Var("a"), None),
@@ -378,6 +421,7 @@ def test_set_statement_assigns_multiple_existing_targets():
 
 
 def test_set_statement_rejects_unbound_variable_assignment():
+    # a = 1
     statement = AST.SetStatement(
         [AST.Access(AST.Var("a"), None)],
         [AST.LitInt(1)],
@@ -388,6 +432,8 @@ def test_set_statement_rejects_unbound_variable_assignment():
 
 
 def test_set_statement_rejects_const_variable_reassignment():
+    # const a = 1
+    # a = 2
     env = scope()
     env.define("a", 1, const=True)
     statement = AST.SetStatement(
@@ -400,6 +446,8 @@ def test_set_statement_rejects_const_variable_reassignment():
 
 
 def test_set_statement_can_mutate_table_stored_in_const_variable():
+    # const a = {"b": 1}
+    # a.b = 2
     env = scope()
     env.define("a", {"b": 1}, const=True)
     statement = AST.SetStatement(
@@ -411,6 +459,7 @@ def test_set_statement_can_mutate_table_stored_in_const_variable():
 
 
 def test_set_statement_rejects_mismatched_target_and_value_counts():
+    # a, b = 1
     statement = AST.SetStatement(
         [
             AST.Access(AST.Var("a"), None),
@@ -424,6 +473,7 @@ def test_set_statement_rejects_mismatched_target_and_value_counts():
 
 
 def test_definition_rejects_mismatched_target_and_value_counts():
+    # let a, b = 1
     statement = AST.Definition(
         const=False,
         var=[AST.Var("a"), AST.Var("b")],
@@ -435,6 +485,8 @@ def test_definition_rejects_mismatched_target_and_value_counts():
 
 
 def test_set_statement_rejects_no_index_target_that_is_not_a_variable():
+    # Invalid lowered AST, roughly trying to assign to a literal target:
+    # "not_a_var" = 1
     statement = AST.SetStatement(
         [AST.Access(AST.LitString("not_a_var"), None)],
         [AST.LitInt(1)],
@@ -445,6 +497,11 @@ def test_set_statement_rejects_no_index_target_that_is_not_a_variable():
 
 
 def test_for_loop_updates_outer_variable():
+    # let sum = 0
+    # for i = 1, 4, 1 do
+    #     sum = sum + i
+    # end
+    # return sum
     ast_file = AST.Block(
         statements=[
             AST.Definition(
@@ -484,6 +541,9 @@ def test_for_loop_updates_outer_variable():
 
 
 def test_for_loop_variable_is_not_visible_after_loop():
+    # for i = 1, 2, 1 do
+    # end
+    # return i
     ast_file = AST.Block(
         statements=[
             AST.ForLoop(
@@ -505,6 +565,11 @@ def test_for_loop_variable_is_not_visible_after_loop():
 
 
 def test_for_loop_does_not_run_body_when_range_is_empty():
+    # let sum = 0
+    # for i = 4, 1, 1 do
+    #     sum = 99
+    # end
+    # return sum
     ast_file = AST.Block(
         statements=[
             AST.Definition(
@@ -537,11 +602,73 @@ def test_for_loop_does_not_run_body_when_range_is_empty():
     assert scope_values(env) == {"sum": 0}
 
 
+def test_break_exits_nearest_for_loop_and_continues_after_loop():
+    # let sum = 0
+    # for i = 1, 10, 1 do
+    #     sum = sum + i
+    #     break
+    #     sum = 999
+    # end
+    # sum = sum + 10
+    # return sum
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("sum")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.ForLoop(
+                var="i",
+                start=AST.LitInt(1),
+                end=AST.LitInt(10),
+                step=AST.LitInt(1),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("sum"), None)],
+                            value=[
+                                AST.BinaryExpression(
+                                    AST.BinExpType.ADD,
+                                    AST.Var("sum"),
+                                    AST.Var("i"),
+                                )
+                            ],
+                        ),
+                        AST.Break(),
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("sum"), None)],
+                            value=[AST.LitInt(999)],
+                        ),
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+            AST.SetStatement(
+                var=[AST.Access(AST.Var("sum"), None)],
+                value=[
+                    AST.BinaryExpression(
+                        AST.BinExpType.ADD,
+                        AST.Var("sum"),
+                        AST.LitInt(10),
+                    )
+                ],
+            ),
+        ],
+        return_statement=AST.Var("sum"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 11
+    assert scope_values(env) == {"sum": 11}
+
+
 def test_function_sums_one_to_ten_and_returns_result():
     # const a = function()
     #     let sum = 0
     #     for i = 1, 11, 1 do
-    #         set sum = sum + i
+    #         sum = sum + i
     #     end
     #     return sum
     # end
@@ -751,7 +878,7 @@ def test_function_closure_reads_outer_variable():
     # const read_x = function()
     #     return x
     # end
-    # set x = 11
+    # x = 11
     # return read_x()
     ast_file = AST.Block(
         statements=[
@@ -794,7 +921,7 @@ def test_function_closure_reads_outer_variable():
 def test_function_closure_can_update_outer_variable():
     # let count = 0
     # const inc = function()
-    #     set count = count + 1
+    #     count = count + 1
     #     return count
     # end
     # return inc() + inc()
@@ -990,3 +1117,623 @@ def test_normal_dot_call_does_not_pass_receiver():
     result, _ = eval_file(ast_file)
 
     assert result == 7
+
+
+def test_function_call_statement_runs_for_side_effects_and_ignores_return_value():
+    # let count = 0
+    # const inc = function()
+    #     count = count + 1
+    #     return 999
+    # end
+    # inc()
+    # return count
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("count")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.Definition(
+                const=True,
+                var=[AST.Var("inc")],
+                value=[
+                    AST.Lambda(
+                        parameters=[],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[
+                                AST.SetStatement(
+                                    var=[AST.Access(AST.Var("count"), None)],
+                                    value=[
+                                        AST.BinaryExpression(
+                                            AST.BinExpType.ADD,
+                                            AST.Var("count"),
+                                            AST.LitInt(1),
+                                        )
+                                    ],
+                                )
+                            ],
+                            return_statement=AST.LitInt(999),
+                        ),
+                    )
+                ],
+            ),
+            AST.FunctionCall(
+                method=False,
+                source=AST.Var("inc"),
+                args=[],
+            ),
+        ],
+        return_statement=AST.Var("count"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 1
+    assert env.get("count") == 1
+
+
+def test_block_statement_uses_inner_scope_and_can_update_outer_variable():
+    # let outer = 1
+    # do
+    #     let inner = 10
+    #     outer = outer + inner
+    # end
+    # return outer
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("outer")],
+                value=[AST.LitInt(1)],
+            ),
+            AST.Block(
+                statements=[
+                    AST.Definition(
+                        const=False,
+                        var=[AST.Var("inner")],
+                        value=[AST.LitInt(10)],
+                    ),
+                    AST.SetStatement(
+                        var=[AST.Access(AST.Var("outer"), None)],
+                        value=[
+                            AST.BinaryExpression(
+                                AST.BinExpType.ADD,
+                                AST.Var("outer"),
+                                AST.Var("inner"),
+                            )
+                        ],
+                    ),
+                ],
+                return_statement=AST.LitNil(None),
+            ),
+        ],
+        return_statement=AST.Var("outer"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 11
+    assert scope_values(env) == {"outer": 11}
+    with pytest.raises(RuntimeError, match="unbound variable"):
+        env.get("inner")
+
+
+def test_while_loop_runs_until_condition_is_false():
+    # let count = 0
+    # while count < 3 do
+    #     count = count + 1
+    # end
+    # return count
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("count")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.WhileLoop(
+                condition=AST.BinaryExpression(
+                    AST.BinExpType.LESS,
+                    AST.Var("count"),
+                    AST.LitInt(3),
+                ),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("count"), None)],
+                            value=[
+                                AST.BinaryExpression(
+                                    AST.BinExpType.ADD,
+                                    AST.Var("count"),
+                                    AST.LitInt(1),
+                                )
+                            ],
+                        )
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.Var("count"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 3
+    assert scope_values(env) == {"count": 3}
+
+
+def test_while_loop_break_exits_loop_and_continues_after_loop():
+    # let count = 0
+    # while true do
+    #     count = count + 1
+    #     break
+    #     count = 999
+    # end
+    # count = count + 10
+    # return count
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("count")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.WhileLoop(
+                condition=AST.LitTrue(True),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("count"), None)],
+                            value=[
+                                AST.BinaryExpression(
+                                    AST.BinExpType.ADD,
+                                    AST.Var("count"),
+                                    AST.LitInt(1),
+                                )
+                            ],
+                        ),
+                        AST.Break(),
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("count"), None)],
+                            value=[AST.LitInt(999)],
+                        ),
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+            AST.SetStatement(
+                var=[AST.Access(AST.Var("count"), None)],
+                value=[
+                    AST.BinaryExpression(
+                        AST.BinExpType.ADD,
+                        AST.Var("count"),
+                        AST.LitInt(10),
+                    )
+                ],
+            ),
+        ],
+        return_statement=AST.Var("count"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 11
+    assert scope_values(env) == {"count": 11}
+
+
+def test_repeat_loop_runs_body_at_least_once_and_break_exits():
+    # let count = 0
+    # repeat
+    #     count = count + 1
+    #     break
+    # until true
+    # return count
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("count")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.RepeatLoop(
+                condition=AST.LitTrue(True),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("count"), None)],
+                            value=[
+                                AST.BinaryExpression(
+                                    AST.BinExpType.ADD,
+                                    AST.Var("count"),
+                                    AST.LitInt(1),
+                                )
+                            ],
+                        ),
+                        AST.Break(),
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.Var("count"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 1
+    assert scope_values(env) == {"count": 1}
+
+
+def test_if_statement_executes_first_truthy_branch_only():
+    # let value = 0
+    # if false then
+    #     value = 1
+    # elseif true then
+    #     value = 2
+    # elseif true then
+    #     value = 3
+    # end
+    # return value
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("value")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.IfStatement(
+                conditions=[
+                    (
+                        AST.LitFalse(False),
+                        AST.Block(
+                            statements=[
+                                AST.SetStatement(
+                                    var=[AST.Access(AST.Var("value"), None)],
+                                    value=[AST.LitInt(1)],
+                                )
+                            ],
+                            return_statement=AST.LitNil(None),
+                        ),
+                    ),
+                    (
+                        AST.LitTrue(True),
+                        AST.Block(
+                            statements=[
+                                AST.SetStatement(
+                                    var=[AST.Access(AST.Var("value"), None)],
+                                    value=[AST.LitInt(2)],
+                                )
+                            ],
+                            return_statement=AST.LitNil(None),
+                        ),
+                    ),
+                    (
+                        AST.LitTrue(True),
+                        AST.Block(
+                            statements=[
+                                AST.SetStatement(
+                                    var=[AST.Access(AST.Var("value"), None)],
+                                    value=[AST.LitInt(3)],
+                                )
+                            ],
+                            return_statement=AST.LitNil(None),
+                        ),
+                    ),
+                ],
+                else_block=None,
+            ),
+        ],
+        return_statement=AST.Var("value"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 2
+    assert scope_values(env) == {"value": 2}
+
+
+def test_if_statement_executes_else_when_no_condition_matches():
+    # let value = 0
+    # if false then
+    #     value = 1
+    # else
+    #     value = 4
+    # end
+    # return value
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("value")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.IfStatement(
+                conditions=[
+                    (
+                        AST.LitFalse(False),
+                        AST.Block(
+                            statements=[
+                                AST.SetStatement(
+                                    var=[AST.Access(AST.Var("value"), None)],
+                                    value=[AST.LitInt(1)],
+                                )
+                            ],
+                            return_statement=AST.LitNil(None),
+                        ),
+                    )
+                ],
+                else_block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("value"), None)],
+                            value=[AST.LitInt(4)],
+                        )
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.Var("value"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 4
+    assert scope_values(env) == {"value": 4}
+
+
+def test_unary_not_rejects_non_boolean_non_nil_values():
+    # return !1
+    with pytest.raises(AssertionError, match="Can not take unary not"):
+        eval_expr(AST.UnaryExpression(AST.UnExpType.NOT, AST.LitInt(1)))
+
+
+def test_unary_neg_rejects_non_numeric_values():
+    # return -"x"
+    with pytest.raises(AssertionError, match="attempt to perform arithmetic"):
+        eval_expr(AST.UnaryExpression(AST.UnExpType.NEG, AST.LitString("x")))
+
+
+def test_unary_size_rejects_non_table_values():
+    # return #"x"
+    with pytest.raises(AssertionError, match="attempt to get length"):
+        eval_expr(AST.UnaryExpression(AST.UnExpType.SIZE, AST.LitString("x")))
+
+
+def test_function_call_rejects_non_function_source():
+    # return 1()
+    with pytest.raises(AssertionError, match="not a function"):
+        eval_expr(
+            AST.FunctionCall(
+                method=False,
+                source=AST.LitInt(1),
+                args=[],
+            )
+        )
+
+
+def test_method_call_requires_access_source():
+    # Invalid lowered AST, roughly:
+    # return f:()
+    # Method-call syntax should lower to an access source like obj:method().
+    with pytest.raises(AssertionError, match="Expected function called with ':'"):
+        eval_expr(
+            AST.FunctionCall(
+                method=True,
+                source=AST.Var("f"),
+                args=[],
+            ),
+            {"f": 1},
+        )
+
+
+def test_complex_program_uses_functions_closures_methods_tables_loops_and_if():
+    # const make_counter = function(start)
+    #     let count = start
+    #     return function(step)
+    #         count = count + step
+    #         return count
+    #     end
+    # end
+    #
+    # const account = {
+    #     "balance": 10,
+    #     "inc": make_counter(0),
+    #     "deposit": function(self, amount)
+    #         self.balance = self.balance + amount
+    #         return self.balance
+    #     end,
+    # }
+    #
+    # for i = 1, 4, 1 do
+    #     account.balance = account:deposit(account.inc(i))
+    # end
+    #
+    # if account.balance > 30 then
+    #     account.status = "high"
+    # else
+    #     account.status = "low"
+    # end
+    #
+    # return account.status .. ":" .. account.balance
+    inc_method = AST.Lambda(
+        parameters=["self", "amount"],
+        extra=None,
+        block=AST.Block(
+            statements=[
+                AST.SetStatement(
+                    var=[
+                        AST.Access(
+                            AST.Var("self"),
+                            AST.LitString("balance"),
+                        )
+                    ],
+                    value=[
+                        AST.BinaryExpression(
+                            AST.BinExpType.ADD,
+                            AST.Access(AST.Var("self"), AST.LitString("balance")),
+                            AST.Var("amount"),
+                        )
+                    ],
+                )
+            ],
+            return_statement=AST.Access(AST.Var("self"), AST.LitString("balance")),
+        ),
+    )
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=True,
+                var=[AST.Var("make_counter")],
+                value=[
+                    AST.Lambda(
+                        parameters=["start"],
+                        extra=None,
+                        block=AST.Block(
+                            statements=[
+                                AST.Definition(
+                                    const=False,
+                                    var=[AST.Var("count")],
+                                    value=[AST.Var("start")],
+                                )
+                            ],
+                            return_statement=AST.Lambda(
+                                parameters=["step"],
+                                extra=None,
+                                block=AST.Block(
+                                    statements=[
+                                        AST.SetStatement(
+                                            var=[AST.Access(AST.Var("count"), None)],
+                                            value=[
+                                                AST.BinaryExpression(
+                                                    AST.BinExpType.ADD,
+                                                    AST.Var("count"),
+                                                    AST.Var("step"),
+                                                )
+                                            ],
+                                        )
+                                    ],
+                                    return_statement=AST.Var("count"),
+                                ),
+                            ),
+                        ),
+                    )
+                ],
+            ),
+            AST.Definition(
+                const=True,
+                var=[AST.Var("account")],
+                value=[
+                    AST.LitTable(
+                        [
+                            (AST.LitString("balance"), AST.LitInt(10)),
+                            (
+                                AST.LitString("inc"),
+                                AST.FunctionCall(
+                                    method=False,
+                                    source=AST.Var("make_counter"),
+                                    args=[AST.LitInt(0)],
+                                ),
+                            ),
+                            (AST.LitString("deposit"), inc_method),
+                        ]
+                    )
+                ],
+            ),
+            AST.ForLoop(
+                var="i",
+                start=AST.LitInt(1),
+                end=AST.LitInt(4),
+                step=AST.LitInt(1),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[
+                                AST.Access(
+                                    AST.Var("account"),
+                                    AST.LitString("balance"),
+                                )
+                            ],
+                            value=[
+                                AST.FunctionCall(
+                                    method=True,
+                                    source=AST.Access(
+                                        AST.Var("account"),
+                                        AST.LitString("deposit"),
+                                    ),
+                                    args=[
+                                        AST.FunctionCall(
+                                            method=False,
+                                            source=AST.Access(
+                                                AST.Var("account"),
+                                                AST.LitString("inc"),
+                                            ),
+                                            args=[AST.Var("i")],
+                                        )
+                                    ],
+                                )
+                            ],
+                        )
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+            AST.IfStatement(
+                conditions=[
+                    (
+                        AST.BinaryExpression(
+                            AST.BinExpType.GREATER,
+                            AST.Access(AST.Var("account"), AST.LitString("balance")),
+                            AST.LitInt(30),
+                        ),
+                        AST.Block(
+                            statements=[
+                                AST.SetStatement(
+                                    var=[
+                                        AST.Access(
+                                            AST.Var("account"),
+                                            AST.LitString("status"),
+                                        )
+                                    ],
+                                    value=[AST.LitString("high")],
+                                )
+                            ],
+                            return_statement=AST.LitNil(None),
+                        ),
+                    )
+                ],
+                else_block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[
+                                AST.Access(
+                                    AST.Var("account"),
+                                    AST.LitString("status"),
+                                )
+                            ],
+                            value=[AST.LitString("low")],
+                        )
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.BinaryExpression(
+            AST.BinExpType.CONCAT,
+            AST.BinaryExpression(
+                AST.BinExpType.CONCAT,
+                AST.Access(AST.Var("account"), AST.LitString("status")),
+                AST.LitString(":"),
+            ),
+            AST.Access(AST.Var("account"), AST.LitString("balance")),
+        ),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == "low:20"
+    assert env.get("account")["balance"] == 20
+    assert env.get("account")["status"] == "low"
