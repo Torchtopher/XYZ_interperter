@@ -1,6 +1,7 @@
 from sys import argv
 from os.path import isfile
 from io import StringIO
+from enum import Enum
 
 from xyz.tokenizer import tokenize
 from xyz.parser import parse
@@ -14,7 +15,12 @@ from xyz.interpreter.interpreter import XYZInterperter
 import pytest # would be sad to have known failing tests
 import xyz.parser.ast as AST
 
-def build_program(file_data: StringIO):
+class BuildStep(Enum):
+    TOKENIZE = 0
+    PARSE = 1
+    EXECUTE = 2
+
+def build_program(file_data: StringIO, step: BuildStep = BuildStep.EXECUTE):
     # need to pretend we are a file
     if isinstance(file_data, str):
         file_data = StringIO(file_data)
@@ -22,10 +28,14 @@ def build_program(file_data: StringIO):
     result = tokenize(file_data)
     if isinstance(result, Error):
         result.print()
+    elif step == BuildStep.TOKENIZE:
+        print(result)
     else:
         tree = parse(file_data, TokenIterator(result))
         if isinstance(tree, Error):
             tree.print()
+        elif step == BuildStep.PARSE:
+            print(tree)
         else:
             interp = XYZInterperter()
             print(interp.execute_ast(tree))
