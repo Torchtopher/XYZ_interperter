@@ -55,9 +55,6 @@ def main():
         print("File %s does not exist!" % argv[1])
     else:
         with open(argv[1], "r") as file:
-            print("## IMPLEMENTATION STATUS - 2/3 (WIP)")
-            print("## PRINTING PARSER OUTPUT")
-            print()
             build_program(StringIO(file.read()))
 
 

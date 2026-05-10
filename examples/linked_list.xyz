@@ -1,10 +1,11 @@
+const linkedlist = {}
 let mylinkedlist = nil
 -- linked list nodes are of the form {val = <any>, next = <nil | linked list node>}
-function add(val)
+function linkedlist.add(val)
 	if mylinkedlist == nil then
 		mylinkedlist = {val = val}
 	else
-		curr = mylinkedlist
+		let curr = mylinkedlist
 		while curr.next != nil do
 			curr = curr.next
 		end
@@ -12,11 +13,16 @@ function add(val)
 	end
 end
 
-function get(index)
-	curr = mylinkedlist
+function linkedlist.get(index)
+	let curr = mylinkedlist
 	while index > 0 do
 		index = index - 1
 		curr = curr.next
 	end
 	return curr.val
 end
+
+linkedlist.add(1)
+linkedlist.add(2)
+linkedlist.add(3)
+return linkedlist.get(2)

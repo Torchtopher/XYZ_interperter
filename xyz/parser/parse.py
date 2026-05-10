@@ -234,7 +234,8 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                         tokens.back()
                         expr = True
                 case TT.BRACE_CLOSE:
-                    stop = True
+                    tokens.back()
+                    break
                 case _:
                     tokens.back()
                     expr = True

@@ -1,4 +1,4 @@
-mytable = {
+const mytable = {
 	d = 4
 }
 function mytable:add_with(c)
