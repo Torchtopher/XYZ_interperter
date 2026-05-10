@@ -442,3 +442,96 @@ def test_set_statement_rejects_no_index_target_that_is_not_a_variable():
 
     with pytest.raises(AssertionError, match="must be a variable"):
         exec_stmt(statement)
+
+
+def test_for_loop_updates_outer_variable():
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("sum")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.ForLoop(
+                var="i",
+                start=AST.LitInt(1),
+                end=AST.LitInt(4),
+                step=AST.LitInt(1),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("sum"), None)],
+                            value=[
+                                AST.BinaryExpression(
+                                    AST.BinExpType.ADD,
+                                    AST.Var("sum"),
+                                    AST.Var("i"),
+                                )
+                            ],
+                        )
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.Var("sum"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 6
+    assert scope_values(env) == {"sum": 6}
+
+
+def test_for_loop_variable_is_not_visible_after_loop():
+    ast_file = AST.Block(
+        statements=[
+            AST.ForLoop(
+                var="i",
+                start=AST.LitInt(1),
+                end=AST.LitInt(2),
+                step=AST.LitInt(1),
+                block=AST.Block(
+                    statements=[],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.Var("i"),
+    )
+
+    with pytest.raises(RuntimeError, match="unbound variable"):
+        eval_file(ast_file)
+
+
+def test_for_loop_does_not_run_body_when_range_is_empty():
+    ast_file = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("sum")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.ForLoop(
+                var="i",
+                start=AST.LitInt(4),
+                end=AST.LitInt(1),
+                step=AST.LitInt(1),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("sum"), None)],
+                            value=[AST.LitInt(99)],
+                        )
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.Var("sum"),
+    )
+
+    result, env = eval_file(ast_file)
+
+    assert result == 0
+    assert scope_values(env) == {"sum": 0}

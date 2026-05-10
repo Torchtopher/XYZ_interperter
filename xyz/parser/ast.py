@@ -74,7 +74,7 @@ class GroupedExpr(NamedTuple):
     value: Expression
 
 type File = Block
-type Statement = (Definition | SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop | FunctionDef )
+type Statement = (Definition | SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop )
 type ReturnStatement = Expression
 
 class Block(NamedTuple):
@@ -122,10 +122,4 @@ class ForLoop(NamedTuple):
     start: LitInt
     end: LitInt
     step: LitInt
-
-class FunctionDef(NamedTuple):
-    name: Access
-    method: bool
-    parameters: list[str]
-    extra: str | None
     block: Block

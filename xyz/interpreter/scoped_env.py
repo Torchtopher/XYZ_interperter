@@ -1,4 +1,3 @@
-import xyz.parser.ast as AST
 
 class Variable:
 
@@ -10,6 +9,7 @@ class Variable:
 class Scope:
 
     def __init__(self, parent, name: str):
+        if parent: assert isinstance(parent, Scope), f"Can not assign type {type(parent)} to be the parent of a Scope"
         self.parent: Scope | None = parent
         self.table: dict[str, Variable] = {}
         self.name = name

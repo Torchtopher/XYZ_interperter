@@ -82,6 +82,7 @@ class XYZInterperter:
                     table[key] = val
                 return table
             
+            # f()
             case AST.FunctionCall:
                 print("ERROR NOT IMPLEMENTED YET")
             case AST.Lambda:
@@ -216,6 +217,23 @@ class XYZInterperter:
                     else:
                         assert type(access.table) == dict, f"how is this: {type(access.table)}" 
                         access.table[access.key] = val 
+            
+            case AST.ForLoop:
+                start = self.eval_expression(stmnt.start)
+                end = self.eval_expression(stmnt.end)
+                step = self.eval_expression(stmnt.step)
+
+                old_cvt = self.CVT
+
+                self.CVT = Scope(self.CVT, "for loop")
+                self.CVT.define(stmnt.var, start)
+
+                try: 
+                    for i in range(start, end, step):
+                        self.CVT.update(stmnt.var, i)
+                        self.execute_ast(stmnt.block)
+                finally:
+                    self.CVT = old_cvt
 
     # basically the same as evaulating an expression, but this time give back the container and key
     # so the caller can set the value themseleves 
@@ -231,10 +249,6 @@ class XYZInterperter:
             
             
     def execute_ast(self, ast: AST.File):
-        ast = TEST_AST 
-        
-        print("Using TEST_AST INSTEAD of passed in AST")
-            
         for statement in ast.statements:
             self.exec_statement(statement)
             print(self.GVT)

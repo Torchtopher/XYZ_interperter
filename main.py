@@ -12,6 +12,7 @@ from io import StringIO
 from xyz.interpreter.interpreter import XYZInterperter
 
 import pytest # would be sad to have known failing tests
+import xyz.parser.ast as AST
 
 def build_program(file_data: StringIO):
     # need to pretend we are a file
@@ -35,18 +36,41 @@ def run_tests():
     assert retcode == 0, "Tests failed! see output"
 
 def main():
-    GVT = {
-      "a": {
-          "k": {
-              "b": 99,
-          },
-      },
-      "fx_result": {
-          "c": "k",
-      },
-  }
+
     interp = XYZInterperter()
-    print(interp.execute_ast("a"))
+    TEST_AST: AST.File = AST.Block(
+        statements=[
+            AST.Definition(
+                const=False,
+                var=[AST.Var("sum")],
+                value=[AST.LitInt(0)],
+            ),
+            AST.ForLoop(
+                var="i",
+                start=AST.LitInt(1),
+                end=AST.LitInt(4),
+                step=AST.LitInt(1),
+                block=AST.Block(
+                    statements=[
+                        AST.SetStatement(
+                            var=[AST.Access(AST.Var("sum"), None)],
+                            value=[
+                                AST.BinaryExpression(
+                                    AST.BinExpType.ADD,
+                                    AST.Var("sum"),
+                                    AST.Var("i"),
+                                )
+                            ],
+                        )
+                    ],
+                    return_statement=AST.LitNil(None),
+                ),
+            ),
+        ],
+        return_statement=AST.Var("sum"),
+    )
+
+    print(interp.execute_ast(TEST_AST))
     exit()
     
     run_tests() 
