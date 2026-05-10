@@ -18,4 +18,7 @@ if a+b then
 elseif a-b then return c
 else return 3 end
 
+let a, b, c = 1, 2, 3
+const d = 4
+
 return a * (b - (c.d.e["d"]["e"]:f())({a,b,c,d = e, 1+1, [1+1] = 2+3})["a"].b())

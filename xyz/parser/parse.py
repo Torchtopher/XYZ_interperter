@@ -267,7 +267,18 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         return AST.Lambda(args, extra, parse_block(TT.KEYWORD_END, tokens))
 
     def parse_definition(tokens: TokenIterator, const: bool) -> AST.Definition:
-        return AST.Definition(const, [], [])
+        name = tokens.expect(TT.IDENT, source).name
+        assert isinstance(name, str)
+        var: list[AST.Var] = [AST.Var(name)]
+        while tokens.match(TT.COMMA):
+            name = tokens.expect(TT.IDENT, source).name
+            assert isinstance(name, str)
+            var.append(AST.Var(name))
+        tokens.expect(TT.SET, source)
+        value: list[AST.Expression] = [parse_expression(tokens)]
+        while tokens.match(TT.COMMA):
+            value.append(parse_expression(tokens))
+        return AST.Definition(const, var, value)
 
     # todo! statements
     def parse_block(until: TT | list[TT], tokens: TokenIterator) -> AST.Block:
