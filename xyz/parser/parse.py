@@ -266,11 +266,43 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         tokens.expect(TT.PAREN_CLOSE, source)
         return AST.Lambda(args, extra, parse_block(TT.KEYWORD_END, tokens))
 
+    def parse_definition(tokens: TokenIterator, const: bool) -> AST.Definition:
+        return AST.Definition(const, [], [])
+
     # todo! statements
     def parse_block(until: TT, tokens: TokenIterator) -> AST.Block:
-        block = AST.Block([], parse_expression(tokens))
-        tokens.expect(until, source)
-        return block
+        statements: list[AST.Statement] = []
+        while not tokens.match(until):
+            t = tokens.next()
+            match (t.type):
+                case TT.SEMICOLON:
+                    pass
+                case TT.KEYWORD_LET:
+                    statements.append(parse_definition(tokens, False))
+                case TT.KEYWORD_CONST:
+                    statements.append(parse_definition(tokens, True))
+                case TT.KEYWORD_BREAK:
+                    statements.append(AST.Break())
+                case TT.KEYWORD_DO:
+                    statements.append(parse_block(TT.KEYWORD_END, tokens))
+                case TT.KEYWORD_WHILE:
+                    pass
+                case TT.KEYWORD_REPEAT:
+                    pass
+                case TT.KEYWORD_IF:
+                    pass
+                case TT.KEYWORD_FOR:
+                    pass
+                case TT.KEYWORD_FUNCTION:
+                    pass
+                case TT.KEYWORD_RETURN:
+                    ret = parse_expression(tokens)
+                    tokens.expect(until, source)
+                    return AST.Block([], ret)
+                case _:
+                    # distinguish between assignment and call
+                    pass
+        return AST.Block([], AST.LitNil(None))
 
     print(tokens)
 

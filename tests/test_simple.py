@@ -38,7 +38,7 @@ def binary(operator: AST.BinExpType, left: AST.Expression, right: AST.Expression
     ],
 )
 def test_primary_expressions(program, expected):
-    assert build_program(program).return_statement == expected
+    assert build_program("return "+program).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -56,7 +56,7 @@ def test_primary_expressions(program, expected):
     ],
 )
 def test_unary_expressions(program, expected):
-    assert build_program(program).return_statement == expected
+    assert build_program("return "+program).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -86,7 +86,7 @@ def test_unary_expressions(program, expected):
     ],
 )
 def test_binary_operators(program, expected):
-    assert build_program(program).return_statement == expected
+    assert build_program("return "+program).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -243,4 +243,4 @@ def test_binary_operators(program, expected):
     ],
 )
 def test_compound_expressions(program, expected):
-    assert build_program(program).return_statement == expected
+    assert build_program("return "+program).return_statement == expected
