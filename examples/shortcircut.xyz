@@ -1,0 +1,6 @@
+let a = nil
+let b = true
+
+if b or a - 5 then
+    io.print("HELLO")
+end

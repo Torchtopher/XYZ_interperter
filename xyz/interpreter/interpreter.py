@@ -39,7 +39,7 @@ TEST_AST: AST.File = AST.Block(
 # a[f(x).c].b
 # access(acesss("a", acesss(f(x), "c")) , "b")
 
-# right lookup is
+# ee(expr.right) lookup is
 # GVT["a"]["f(x)"]["c"]["b"]
 
 # most inner "source", that is not an access is the first lookup
@@ -143,7 +143,7 @@ class XYZInterpreter:
 
 
         elif isinstance(expr, AST.UnaryExpression):
-            val = self.eval_expression(expr.right)
+            val = self.eval_expression(expr.ee(expr.right))
             match expr.type:
                 case AST.UnExpType.NOT:
                     assert val is True or val is False or val is None, f"Can not take unary not of type {type(val)}"
@@ -158,59 +158,60 @@ class XYZInterpreter:
                     return len(val)
 
         elif isinstance(expr, AST.BinaryExpression):
-            left = self.eval_expression(expr.left)
-            right = self.eval_expression(expr.right)
+
+            ee = self.eval_expression
+            
             match expr.type:
                 # ===== can only be performed with numbers (floats and ints) ========
                 case AST.BinExpType.ADD: # +
-                    return ensure_num(left) + ensure_num(right)
+                    return ensure_num(ee(expr.left)) + ensure_num(ee(expr.right))
                 case AST.BinExpType.SUB: # -
-                    return ensure_num(left) - ensure_num(right)
+                    return ensure_num(ee(expr.left)) - ensure_num(ee(expr.right))
                 case AST.BinExpType.MUL: # *
-                    return ensure_num(left) * ensure_num(right)
+                    return ensure_num(ee(expr.left)) * ensure_num(ee(expr.right))
                 case AST.BinExpType.DIV: # /
-                    return ensure_num(left) / ensure_num(right)
+                    return ensure_num(ee(expr.left)) / ensure_num(ee(expr.right))
                 case AST.BinExpType.FLOORDIV: # //
-                    return int(ensure_num(left) // ensure_num(right))
+                    return int(ensure_num(ee(expr.left)) // ensure_num(ee(expr.right)))
                 case AST.BinExpType.EXP: # **
-                    return ensure_num(left) ** ensure_num(right)
+                    return ensure_num(ee(expr.left)) ** ensure_num(ee(expr.right))
                 case AST.BinExpType.MOD: # %
-                    return ensure_num(left) % ensure_num(right)
+                    return ensure_num(ee(expr.left)) % ensure_num(ee(expr.right))
 
                 case AST.BinExpType.LESS:
-                    return ensure_num(left) < ensure_num(right)
+                    return ensure_num(ee(expr.left)) < ensure_num(ee(expr.right))
                 case AST.BinExpType.LEQ:
-                    return ensure_num(left) <= ensure_num(right)
+                    return ensure_num(ee(expr.left)) <= ensure_num(ee(expr.right))
                 case AST.BinExpType.GREATER:
-                    return ensure_num(left) > ensure_num(right)
+                    return ensure_num(ee(expr.left)) > ensure_num(ee(expr.right))
                 case AST.BinExpType.GEQ:
-                    return ensure_num(left) >= ensure_num(right)
+                    return ensure_num(ee(expr.left)) >= ensure_num(ee(expr.right))
 
                 # ===== can only be perfomed with 2 ints ========
                 case AST.BinExpType.BIT_AND:
-                    return ensure_int(left) & ensure_int(right)
+                    return ensure_int(ee(expr.left)) & ensure_int(ee(expr.right))
                 case AST.BinExpType.BIT_XOR:
-                    return ensure_int(left) ^ ensure_int(right)
+                    return ensure_int(ee(expr.left)) ^ ensure_int(ee(expr.right))
                 case AST.BinExpType.BIT_OR:
-                    return ensure_int(left) | ensure_int(right)
+                    return ensure_int(ee(expr.left)) | ensure_int(ee(expr.right))
                 case AST.BinExpType.LSHIFT:
-                    return ensure_int(left) << ensure_int(right)
+                    return ensure_int(ee(expr.left)) << ensure_int(ee(expr.right))
                 case AST.BinExpType.RSHIFT:
-                    return ensure_int(left) >> ensure_int(right)
+                    return ensure_int(ee(expr.left)) >> ensure_int(ee(expr.right))
 
                 # all objects
                 case AST.BinExpType.EQUAL:
-                    return left == right
+                    return ee(expr.left) == ee(expr.right)
                 case AST.BinExpType.NEQ:
-                    return left != right
+                    return ee(expr.left) != ee(expr.right)
                 case AST.BinExpType.AND:
-                    return left and right
+                    return ee(expr.left) and ee(expr.right)
                 case AST.BinExpType.OR:
-                    return left or right
+                    return ee(expr.left) or ee(expr.right)
 
                 # works with strings and numbers only
                 case AST.BinExpType.CONCAT:
-                    return str(ensure_concat(left)) + str(ensure_concat(right))
+                    return str(ensure_concat(ee(expr.left))) + str(ensure_concat(ee(expr.right)))
 
         elif isinstance(expr,  AST.Var):
             return self.CVT.get(expr.name)
