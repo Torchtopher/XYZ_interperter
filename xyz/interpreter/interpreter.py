@@ -39,7 +39,7 @@ TEST_AST: AST.File = AST.Block(
 # a[f(x).c].b
 # access(acesss("a", acesss(f(x), "c")) , "b")
 
-# ee(expr.right) lookup is
+# right lookup is
 # GVT["a"]["f(x)"]["c"]["b"]
 
 # most inner "source", that is not an access is the first lookup
@@ -143,11 +143,11 @@ class XYZInterpreter:
 
 
         elif isinstance(expr, AST.UnaryExpression):
-            val = self.eval_expression(expr.ee(expr.right))
+            val = self.eval_expression(expr.right)
             match expr.type:
                 case AST.UnExpType.NOT:
-                    # allowed to take unary not of everything, just want to make sure its not None
-                    return val is not None
+                    # allowed to take unary not of everything, just want to make sure its not None or False (our only "falsey" values)
+                    return val is not None and val is not False
 
                 case AST.UnExpType.NEG:
                     assert isinstance(val, int | float), f"attempt to perform arithmetic on a {type(val)} value"
