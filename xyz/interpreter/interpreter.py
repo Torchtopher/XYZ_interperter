@@ -146,8 +146,8 @@ class XYZInterpreter:
             val = self.eval_expression(expr.ee(expr.right))
             match expr.type:
                 case AST.UnExpType.NOT:
-                    assert val is True or val is False or val is None, f"Can not take unary not of type {type(val)}"
-                    return not val
+                    # allowed to take unary not of everything, just want to make sure its not None
+                    return val is not None
 
                 case AST.UnExpType.NEG:
                     assert isinstance(val, int | float), f"attempt to perform arithmetic on a {type(val)} value"
