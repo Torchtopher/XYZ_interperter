@@ -7,7 +7,7 @@ from xyz.eval import debug, BuildStep
 
 import pytest # would be sad to have known failing tests
 
-DEBUG = False
+DEBUG = True
 
 # demo import function
 def xyz_import(name):

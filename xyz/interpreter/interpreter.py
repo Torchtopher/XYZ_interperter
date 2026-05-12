@@ -147,7 +147,7 @@ class XYZInterpreter:
             match expr.type:
                 case AST.UnExpType.NOT:
                     # allowed to take unary not of everything, just want to make sure its not None or False (our only "falsey" values)
-                    return val is not None and val is not False
+                    return val is None or val is False
 
                 case AST.UnExpType.NEG:
                     assert isinstance(val, int | float), f"attempt to perform arithmetic on a {type(val)} value"

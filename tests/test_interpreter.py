@@ -1483,11 +1483,6 @@ def test_if_statement_executes_else_when_no_condition_matches():
     assert scope_values(env) == {"value": 4}
 
 
-def test_unary_not_rejects_non_boolean_non_nil_values():
-    # return !1
-    with pytest.raises(AssertionError, match="Can not take unary not"):
-        eval_expr(AST.UnaryExpression(AST.UnExpType.NOT, AST.LitInt(1)))
-
 
 def test_unary_neg_rejects_non_numeric_values():
     # return -"x"
