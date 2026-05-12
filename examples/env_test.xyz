@@ -7,7 +7,7 @@ io.print(ll:size())
 io.print(ll:remove(9))
 io.print(ll:size())
 
-if true then
+if false then
 	return io.read()
 end
-return 1
+return {1, 2, 3, true, false, "ab", [8] = 8}

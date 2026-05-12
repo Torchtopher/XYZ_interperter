@@ -2,7 +2,7 @@ from sys import argv, stdin
 from os.path import isfile
 from enum import Enum
 
-from xyz import eval, XYZEnvironment
+from xyz import eval, XYZEnvironment, display
 from xyz.eval import debug, BuildStep
 
 import pytest # would be sad to have known failing tests
@@ -18,8 +18,8 @@ ENV = XYZEnvironment({
     "io": {
         "read": lambda: input(),
         "readchar": lambda: stdin.read(1),
-        "print": lambda *args: print(*args),
-        "write": lambda x: print(x, end='')
+        "print": lambda *args: print(*[display(a) for a in args]),
+        "write": lambda x: print(display(x), end='')
     },
     "string": {
         "length": lambda x: len(str(x)),
@@ -46,7 +46,7 @@ def main():
             if DEBUG:
                 debug(file.read(), BuildStep.EXECUTE, ENV)
             else:
-                print(eval(file.read(), ENV))
+                print(display(eval(file.read(), ENV)))
 
 
 if __name__ == "__main__":
