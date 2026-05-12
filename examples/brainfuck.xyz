@@ -1,7 +1,10 @@
 -- brainfuck interpreter
+-- lots of programs don't work because there's a lot of variation in interpreter implementations
 
 -- Hello, World!
 const program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+-- Cat
+-- const program = ",[.,]"
 
 const tape = {0}
 let pointer = 0

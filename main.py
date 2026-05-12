@@ -25,7 +25,7 @@ ENV = XYZEnvironment({
         "length": lambda x: len(str(x)),
         "char": lambda x, i: x[i],
         "from_codepoint": lambda c: chr(c),
-        "to_codepoint": lambda c: ord(c),
+        "to_codepoint": lambda c: ord(c or '\0'),
     },
     "import": xyz_import
 })
