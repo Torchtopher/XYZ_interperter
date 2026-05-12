@@ -75,7 +75,7 @@ class GroupedExpr(NamedTuple):
 
 type File = Block
 type Statement = (Definition | SetStatement | FunctionCall | Break | Block | WhileLoop | RepeatLoop | IfStatement | ForLoop )
-type ReturnStatement = Expression
+type ReturnStatement = Expression | None
 
 class Block(NamedTuple):
     statements: list[Statement]

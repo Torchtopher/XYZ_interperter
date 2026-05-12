@@ -23,6 +23,26 @@ return {
 			end
 			return curr.val
 		end
+		function instance:remove(index)
+			if index == 0 then
+				const v = self.list.val
+				self.list = self.list.next
+				return v
+			else
+				index = index - 1
+				let curr = self.list.next
+				let last = self.list
+				while index > 0 do
+					index = index - 1
+					last = curr
+					curr = curr.next
+				end
+				const v = curr.val
+				last.next = curr.next
+				curr.next = nil
+				return v
+			end
+		end
 		return instance
 	end
 }

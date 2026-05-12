@@ -52,6 +52,11 @@ class AccessorResult(NamedTuple):
 
 class BreakSignal(Exception):
     pass
+class ReturnValue(Exception):
+    value: XYZType
+    def __init__(self, value: XYZType):
+        self.value = value
+
 
 class XYZInterpreter:
 
@@ -70,7 +75,7 @@ class XYZInterpreter:
     # if len(args) < len(paramaters), fills the rest of the params with None
     # if len(args) > len(parameters), remaining args are ignored, unless there is ...something
     def xyz_function(self, params: list[str], extra: str | None, block: AST.Block, scope: Scope, name: str):
-        def call(*args: list[XYZType]):
+        def call(*args: list[XYZType]) -> XYZType:
             old_cvt = self.CVT
 
             try:
@@ -89,8 +94,10 @@ class XYZInterpreter:
 
                     self.CVT.define(extra, val_dict)
 
-                return self.execute_ast(block)
-
+                self.execute_block(block)
+                return None
+            except ReturnValue as r:
+                return r.value
             finally:
                 self.CVT = old_cvt
         return call
@@ -275,7 +282,7 @@ class XYZInterpreter:
 
             self.CVT = Scope(self.CVT, "inner block")
             try:
-                self.execute_ast(stmnt)
+                self.execute_block(stmnt)
             finally:
                 self.CVT = old_cvt
 
@@ -286,7 +293,7 @@ class XYZInterpreter:
             try:
                 while (self.eval_expression(stmnt.condition)):
                     try:
-                        self.execute_ast(stmnt.block)
+                        self.execute_block(stmnt.block)
                     except BreakSignal:
                         break
             finally:
@@ -299,7 +306,7 @@ class XYZInterpreter:
             try:
                 while True:
                     try:
-                        self.execute_ast(stmnt.block)
+                        self.execute_block(stmnt.block)
                     except BreakSignal:
                         break
 
@@ -316,11 +323,11 @@ class XYZInterpreter:
 
                 for expr, block in stmnt.conditions:
                     if (self.eval_expression(expr)):
-                        self.execute_ast(block)
+                        self.execute_block(block)
                         stop = True
                         break
                 if not stop and stmnt.else_block:
-                    self.execute_ast(stmnt.else_block)
+                    self.execute_block(stmnt.else_block)
 
             finally:
                 self.CVT = old_cvt
@@ -338,9 +345,15 @@ class XYZInterpreter:
         return AccessorResult(ensure_table(container), key)
 
 
-    def execute_ast(self, ast: AST.File) -> XYZType:
+    def execute_block(self, ast: AST.Block):
         for statement in ast.statements:
             self.exec_statement(statement)
             if self.debug: print(self.GVT)
+        if ast.return_statement != None:
+            raise ReturnValue(self.eval_expression(ast.return_statement))
 
-        return self.eval_expression(ast.return_statement)
+    def execute_ast(self, ast: AST.File) -> XYZType:
+        try:
+            self.execute_block(ast)
+        except ReturnValue as r:
+            return r.value

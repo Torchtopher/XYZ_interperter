@@ -378,7 +378,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                         statements.append(AST.SetStatement(var, value))
                     else:
                         raise NoGrammarMatchError(tokens.prev().span, source, "assignment or function call")
-        return AST.Block(statements, AST.LitNil(None))
+        return AST.Block(statements, None)
 
     try:
         file: AST.File = parse_block(TT.EOF, tokens)
