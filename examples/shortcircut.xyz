@@ -1,6 +1,6 @@
 let a = nil
 let b = true
 
-if b and a - 5 then
+if not b or not false then
     io.print("HELLO")
 end

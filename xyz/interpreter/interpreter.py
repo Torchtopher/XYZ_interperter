@@ -282,7 +282,7 @@ class XYZInterpreter:
 
             self.CVT = Scope(self.CVT, "While loop")
             try:
-                while (self.eval_expression(stmnt.condition)):
+                while (truthy(self.eval_expression(stmnt.condition))):
                     try:
                         self.execute_block(stmnt.block)
                     except BreakSignal:
@@ -301,7 +301,7 @@ class XYZInterpreter:
                     except BreakSignal:
                         break
 
-                    if self.eval_expression(stmnt.condition): break
+                    if truthy(self.eval_expression(stmnt.condition)): break
             finally:
                 self.CVT = old_cvt
 
@@ -313,7 +313,7 @@ class XYZInterpreter:
                 stop = False
 
                 for expr, block in stmnt.conditions:
-                    if (self.eval_expression(expr)):
+                    if truthy(self.eval_expression(expr)):
                         self.execute_block(block)
                         stop = True
                         break
