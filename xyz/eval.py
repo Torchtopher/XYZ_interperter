@@ -23,7 +23,7 @@ def eval(string: str, env: XYZEnvironment | None = None) -> XYZType:
             tree.print()
             return None
         else:
-            interp = XYZInterpreter(env)
+            interp = XYZInterpreter(env, file)
             result = interp.execute_ast(tree)
             if isinstance(result, Error):
                 result.print()
