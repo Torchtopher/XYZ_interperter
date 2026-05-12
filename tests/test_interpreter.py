@@ -33,9 +33,7 @@ def exec_stmt(statement: AST.Statement, global_var_table: dict | Scope | None = 
 def eval_file(ast_file: AST.File, global_var_table: dict | Scope | None = None):
     env = global_var_table if isinstance(global_var_table, Scope) else scope(global_var_table)
     interpreter = XYZInterpreter(env)
-    for statement in ast_file.statements:
-        interpreter.exec_statement(statement)
-    return interpreter.eval_expression(ast_file.return_statement), interpreter.GVT
+    return interpreter.execute_ast(ast_file), interpreter.GVT
 
 
 ACCESS_AND_DEFINITION_AST = AST.Block(
@@ -527,7 +525,7 @@ def test_for_loop_updates_outer_variable():
                             ],
                         )
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
         ],
@@ -553,7 +551,7 @@ def test_for_loop_variable_is_not_visible_after_loop():
                 step=AST.LitInt(1),
                 block=AST.Block(
                     statements=[],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
         ],
@@ -589,7 +587,7 @@ def test_for_loop_does_not_run_body_when_range_is_empty():
                             value=[AST.LitInt(99)],
                         )
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
         ],
@@ -641,7 +639,7 @@ def test_break_exits_nearest_for_loop_and_continues_after_loop():
                             value=[AST.LitInt(999)],
                         ),
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
             AST.SetStatement(
@@ -707,7 +705,7 @@ def test_function_sums_one_to_ten_and_returns_result():
                                                 ],
                                             )
                                         ],
-                                        return_statement=AST.LitNil(None),
+                                        return_statement=None,
                                     ),
                                 ),
                             ],
@@ -1206,7 +1204,7 @@ def test_block_statement_uses_inner_scope_and_can_update_outer_variable():
                         ],
                     ),
                 ],
-                return_statement=AST.LitNil(None),
+                return_statement=None,
             ),
         ],
         return_statement=AST.Var("outer"),
@@ -1252,7 +1250,7 @@ def test_while_loop_runs_until_condition_is_false():
                             ],
                         )
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
         ],
@@ -1301,7 +1299,7 @@ def test_while_loop_break_exits_loop_and_continues_after_loop():
                             value=[AST.LitInt(999)],
                         ),
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
             AST.SetStatement(
@@ -1354,7 +1352,7 @@ def test_repeat_loop_runs_body_at_least_once_and_break_exits():
                         ),
                         AST.Break(),
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
         ],
@@ -1395,7 +1393,7 @@ def test_if_statement_executes_first_truthy_branch_only():
                                     value=[AST.LitInt(1)],
                                 )
                             ],
-                            return_statement=AST.LitNil(None),
+                            return_statement=None,
                         ),
                     ),
                     (
@@ -1407,7 +1405,7 @@ def test_if_statement_executes_first_truthy_branch_only():
                                     value=[AST.LitInt(2)],
                                 )
                             ],
-                            return_statement=AST.LitNil(None),
+                            return_statement=None,
                         ),
                     ),
                     (
@@ -1419,7 +1417,7 @@ def test_if_statement_executes_first_truthy_branch_only():
                                     value=[AST.LitInt(3)],
                                 )
                             ],
-                            return_statement=AST.LitNil(None),
+                            return_statement=None,
                         ),
                     ),
                 ],
@@ -1461,7 +1459,7 @@ def test_if_statement_executes_else_when_no_condition_matches():
                                     value=[AST.LitInt(1)],
                                 )
                             ],
-                            return_statement=AST.LitNil(None),
+                            return_statement=None,
                         ),
                     )
                 ],
@@ -1472,7 +1470,7 @@ def test_if_statement_executes_else_when_no_condition_matches():
                             value=[AST.LitInt(4)],
                         )
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
         ],
@@ -1678,7 +1676,7 @@ def test_complex_program_uses_functions_closures_methods_tables_loops_and_if():
                             ],
                         )
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
             AST.IfStatement(
@@ -1701,7 +1699,7 @@ def test_complex_program_uses_functions_closures_methods_tables_loops_and_if():
                                     value=[AST.LitString("high")],
                                 )
                             ],
-                            return_statement=AST.LitNil(None),
+                            return_statement=None,
                         ),
                     )
                 ],
@@ -1717,7 +1715,7 @@ def test_complex_program_uses_functions_closures_methods_tables_loops_and_if():
                             value=[AST.LitString("low")],
                         )
                     ],
-                    return_statement=AST.LitNil(None),
+                    return_statement=None,
                 ),
             ),
         ],
