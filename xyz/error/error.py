@@ -1,9 +1,8 @@
 from xyz.error.color import (style, NORMAL, BOLD, RED, WHITE, GRAY)
 from io import StringIO
 
-type Span = tuple[int, int]
 type LineCol = tuple[int, int]
-type LineSpan = tuple[LineCol, LineCol]
+type Span = tuple[LineCol, LineCol]
 
 # An error in the XYZ pipeline.
 # Should primarily be handled as values, but can be thrown as exceptions if automatic propagation is needed.
@@ -26,29 +25,17 @@ class Error(Exception):
         self.text = self.file.read()
         self.file.seek(original_pos)
 
-    def get_line_span(self) -> LineSpan:
-        original_pos: int = self.file.tell()
-        self.file.seek(0)
-        txt = self.file.read()
-        first: list[str] = txt[:self.span[0]+1].splitlines(keepends=True)
-        last: list[str] = txt[:self.span[1]].splitlines(keepends=True)
-        span: LineSpan = (
-            (len(first), len(first[-1])-1), (len(last), len(last[-1])-1))
-        self.file.seek(original_pos)
-        return span
-
     def print(self):
         self.get_text()
-        line_span: LineSpan = self.get_line_span()
         print(style((BOLD, WHITE), "XYZ"), style(
-            (BOLD, RED), type(self).__name__), "@", "[%s:%s]" % line_span[0])
+            (BOLD, RED), type(self).__name__), "@", "[%s:%s]" % self.span[0])
         print(self.message())
         print()
         lines: list[str] = self.text.splitlines()
-        for i in range(line_span[0][0]-1, line_span[1][0]):
+        for i in range(self.span[0][0]-1, self.span[1][0]):
             line: str = lines[i]
-            start: int = line_span[0][1]-1 if i == line_span[0][0]-1 else 0
-            end: int = line_span[1][1] if i == line_span[1][0]-1 else len(line)
+            start: int = self.span[0][1]-1 if i == self.span[0][0]-1 else 0
+            end: int = self.span[1][1] if i == self.span[1][0]-1 else len(line)
             printed: str = ""
             under: str = ""
             for c in range(len(line)):

@@ -1,5 +1,5 @@
 from xyz.tokenizer.tokens import Token, TokenType, keywords
-from xyz.error import Error
+from xyz.error import Error, Span
 from xyz.tokenizer.error import (
     InvalidTokenError, InvalidEscapeError,
     StringNewlineError, UnexpectedEndError)
@@ -15,134 +15,143 @@ def peek(file) -> str:
 
 def tokenize(file) -> list[Token] | Error:
     tokens: list[Token] = []
-    start: int = 0
+    line: int = 1
+    col: int = 1
+
+    def span(width: int) -> Span:
+        return ((line, col), (line, col+width))
 
     def tokenize_iter(file) -> GeneratorType[Token | Error]:
-        nonlocal start
+        nonlocal line, col
 
         while True:
             char: str = file.read(1)
             match char:
                 case '':
-                    yield Token(TokenType.EOF, (start, start+1), None)
+                    yield Token(TokenType.EOF, span(1), None)
                     return
                 case _ if char.isspace():
-                    start += 1
+                    if char == "\n":
+                        line += 1
+                        col = 1
+                    else:
+                        col += 1
                 case _ if char.isalpha() or char == "_":
-                    yield tokenize_ident(file, start, char)
+                    yield tokenize_ident(file, line, col, char)
                 case _ if char.isdecimal():
-                    yield tokenize_number(file, start, char)
+                    yield tokenize_number(file, line, col, char)
                 case '.':
                     nextchar: str = peek(file)
                     if nextchar.isdecimal():
-                        yield tokenize_number(file, start, char)
+                        yield tokenize_number(file, line, col, char)
                     elif nextchar == '.':
                         file.read(1)
                         if peek(file) == '.':
                             file.read(1)
-                            yield Token(TokenType.ELLIPSIS, (start, start+3), None)
+                            yield Token(TokenType.ELLIPSIS, span(3), None)
                         else:
-                            yield Token(TokenType.OP_CONCAT, (start, start+2), None)
+                            yield Token(TokenType.OP_CONCAT, span(2), None)
                     else:
-                        yield Token(TokenType.DOT, (start, start+1), None)
-                        start += 1
+                        yield Token(TokenType.DOT, span(1), None)
                 case "'" | '"':
-                    yield tokenize_string(file, start, char)
+                    yield tokenize_string(file, line, col, char)
                 case ';':
-                    yield Token(TokenType.SEMICOLON, (start, start+1), None)
+                    yield Token(TokenType.SEMICOLON, span(1), None)
                 case ',':
-                    yield Token(TokenType.COMMA, (start, start+1), None)
+                    yield Token(TokenType.COMMA, span(1), None)
                 case '=':
                     if peek(file) == '=':
                         file.read(1)
-                        yield Token(TokenType.OP_EQUAL, (start, start+2), None)
+                        yield Token(TokenType.OP_EQUAL, span(2), None)
                     else:
-                        yield Token(TokenType.SET, (start, start+1), None)
+                        yield Token(TokenType.SET, span(1), None)
                 case ':':
-                    yield Token(TokenType.COLON, (start, start+1), None)
+                    yield Token(TokenType.COLON, span(1), None)
                 case '(':
-                    yield Token(TokenType.PAREN_OPEN, (start, start+1), None)
+                    yield Token(TokenType.PAREN_OPEN, span(1), None)
                 case ')':
-                    yield Token(TokenType.PAREN_CLOSE, (start, start+1), None)
+                    yield Token(TokenType.PAREN_CLOSE, span(1), None)
                 case '[':
-                    yield Token(TokenType.BRACKET_OPEN, (start, start+1), None)
+                    yield Token(TokenType.BRACKET_OPEN, span(1), None)
                 case ']':
-                    yield Token(TokenType.BRACKET_CLOSE, (start, start+1), None)
+                    yield Token(TokenType.BRACKET_CLOSE, span(1), None)
                 case '{':
-                    yield Token(TokenType.BRACE_OPEN, (start, start+1), None)
+                    yield Token(TokenType.BRACE_OPEN, span(1), None)
                 case '}':
-                    yield Token(TokenType.BRACE_CLOSE, (start, start+1), None)
+                    yield Token(TokenType.BRACE_CLOSE, span(1), None)
                 case '+':
-                    yield Token(TokenType.OP_PLUS, (start, start+1), None)
+                    yield Token(TokenType.OP_PLUS, span(1), None)
                 case '-':
                     if peek(file) == '-':
                         # handle comments
-                        start += 2
                         while file.read(1) != "\n":
-                            start += 1
+                            pass
+                        line += 1
+                        col = 1
                     else:
-                        yield Token(TokenType.OP_MINUS, (start, start + 1), None)
+                        yield Token(TokenType.OP_MINUS, span(1), None)
                 case '*':
                     if peek(file) == '*':
                         file.read(1)
-                        yield Token(TokenType.OP_EXP, (start, start+2), None)
+                        yield Token(TokenType.OP_EXP, span(2), None)
                     else:
-                        yield Token(TokenType.OP_MUL, (start, start+1), None)
+                        yield Token(TokenType.OP_MUL, span(1), None)
                 case '/':
                     if peek(file) == '/':
                         file.read(1)
-                        yield Token(TokenType.OP_FLOORDIV, (start, start+2), None)
+                        yield Token(TokenType.OP_FLOORDIV, span(2), None)
                     else:
-                        yield Token(TokenType.OP_DIV, (start, start+1), None)
+                        yield Token(TokenType.OP_DIV, span(1), None)
                 case '%':
-                    yield Token(TokenType.OP_MOD, (start, start+1), None)
+                    yield Token(TokenType.OP_MOD, span(1), None)
                 case '&':
-                    yield Token(TokenType.OP_AND, (start, start+1), None)
+                    yield Token(TokenType.OP_AND, span(1), None)
                 case '^':
-                    yield Token(TokenType.OP_XOR, (start, start+1), None)
+                    yield Token(TokenType.OP_XOR, span(1), None)
                 case '|':
-                    yield Token(TokenType.OP_OR, (start, start+1), None)
+                    yield Token(TokenType.OP_OR, span(1), None)
                 case '<':
                     nextchar: str = peek(file)
                     if nextchar == '<':
                         file.read(1)
-                        yield Token(TokenType.OP_LSHIFT, (start, start+2), None)
+                        yield Token(TokenType.OP_LSHIFT, span(2), None)
                     elif nextchar == '=':
                         file.read(1)
-                        yield Token(TokenType.OP_LEQ, (start, start+2), None)
+                        yield Token(TokenType.OP_LEQ, span(2), None)
                     else:
-                        yield Token(TokenType.OP_LESS, (start, start+1), None)
+                        yield Token(TokenType.OP_LESS, span(1), None)
                 case '>':
                     nextchar: str = peek(file)
                     if nextchar == '>':
                         file.read(1)
-                        yield Token(TokenType.OP_RSHIFT, (start, start+2), None)
+                        yield Token(TokenType.OP_RSHIFT, span(2), None)
                     elif nextchar == '=':
                         file.read(1)
-                        yield Token(TokenType.OP_GEQ, (start, start+2), None)
+                        yield Token(TokenType.OP_GEQ, span(2), None)
                     else:
-                        yield Token(TokenType.OP_GREATER, (start, start+1), None)
+                        yield Token(TokenType.OP_GREATER, span(1), None)
                 case '#':
-                    yield Token(TokenType.OP_SIZE, (start, start+1), None)
+                    yield Token(TokenType.OP_SIZE, span(1), None)
                 case '!':
                     if peek(file) == '=':
                         file.read(1)
-                        yield Token(TokenType.OP_NEQ, (start, start+2), None)
+                        yield Token(TokenType.OP_NEQ, span(2), None)
                     else:
-                        yield Token(TokenType.OP_NOT, (start, start+1), None)
+                        yield Token(TokenType.OP_NOT, span(1), None)
                 case _:
-                    yield InvalidTokenError((start, start+1), file, char)
+                    yield InvalidTokenError(span(1), file, char)
     for token in tokenize_iter(file):
         if isinstance(token, Error):
             return token
         tokens.append(token)
-        start = token[1][1]
+        line = token[1][1][0]
+        col = token[1][1][1]
     return tokens
 
 
-def tokenize_ident(file, start, char) -> Token:
+def tokenize_ident(file, line, col, char) -> Token:
     ident: str = char
-    end: int = start + 1
+    end: int = col + 1
     while True:
         nextchar: str = peek(file)
         if nextchar.isalnum() or nextchar == "_":
@@ -151,15 +160,15 @@ def tokenize_ident(file, start, char) -> Token:
         else:
             break
     if ident in keywords.keys():
-        return Token(keywords[ident], (start, end), None)
+        return Token(keywords[ident], ((line, col), (line, end)), None)
     else:
-        return Token(TokenType.IDENT, (start, end), ident)
+        return Token(TokenType.IDENT, ((line, col), (line, end)), ident)
 
 
-def tokenize_number(file, start, char) -> Token:
+def tokenize_number(file, line, col, char) -> Token:
     frac: bool = char == '.'
     final: str = char
-    end: int = start + 1
+    end: int = col + 1
     while True:
         nextchar: str = peek(file)
         if not frac and nextchar == '.':
@@ -171,22 +180,29 @@ def tokenize_number(file, start, char) -> Token:
             end += 1
         else:
             break
-    return Token(TokenType.FLOAT if frac else TokenType.INT, (start, end), final)
+    return Token(TokenType.FLOAT if frac else TokenType.INT, ((line, col), (line, end)), final)
 
 
-def tokenize_string(file, start, char) -> Token | Error:
+def tokenize_string(file, line, col, char) -> Token | Error:
     final: str = ""
     escape: bool = False
-    end: int = start+1
+    end_line: int = line
+    end_col: int = col+1
     skipwhite: bool = False
     while True:
         nextchar: str = file.read(1)
         if nextchar == '':
-            return UnexpectedEndError((end, end+1), file)
-        end += 1
+            return UnexpectedEndError(((line, col), (end_line, end_col+1)), file)
+        end_col += 1
         if skipwhite:
             if not nextchar.isspace():
                 skipwhite = False
+            elif nextchar == "\n":
+                old_lc = (end_line, end_col-1)
+                end_line += 1
+                end_col = 1
+                return StringNewlineError((old_lc, (end_line, end_col)), file)
+
         elif escape:
             escape = False
             match nextchar:
@@ -196,8 +212,12 @@ def tokenize_string(file, start, char) -> Token | Error:
                     final += '\b'
                 case 'f':
                     final += '\f'
-                case 'n' | '\n':
+                case 'n':
                     final += '\n'
+                case '\n':
+                    final += '\n'
+                    end_line += 1
+                    end_col = 1
                 case 'r':
                     final += '\r'
                 case 't':
@@ -214,13 +234,13 @@ def tokenize_string(file, start, char) -> Token | Error:
                     skipwhite = True
                 # todo?: \xXX, \ddd, \u{XXX}
                 case _:
-                    return InvalidEscapeError((end-2, end), file, nextchar)
+                    return InvalidEscapeError(((end_line, end_col-2), (end_line, end_col-1)), file, nextchar)
         elif nextchar == char:
             break
         elif nextchar == '\\':
             escape = True
         elif nextchar == '\n':
-            return StringNewlineError((end-2, end), file)
+            return StringNewlineError(((end_line, end_col-1), (end_line + 1, 1)), file)
         else:
             final += nextchar
-    return Token(TokenType.STRING, (start, end), final)
+    return Token(TokenType.STRING, ((line, col), (end_line, end_col)), final)

@@ -9,4 +9,4 @@ myvar = 1
 myvar == 2
 
 "my cool\
-string\"
+string"
