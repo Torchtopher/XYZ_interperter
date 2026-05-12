@@ -127,7 +127,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                              TT.OP_SIZE])):
             t = tokens.prev()
             rhs: AST.Expression = parse_unary(tokens)
-            return AST.UnaryExpression((t.span[0], tokens.curr().span[1]), UNARY_TOKENS_TO_AST[t.type], rhs)
+            return AST.UnaryExpression((t.span[0], tokens.prev().span[1]), UNARY_TOKENS_TO_AST[t.type], rhs)
         
         exp = parse_power(tokens)
 

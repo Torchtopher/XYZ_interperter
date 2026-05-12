@@ -35,7 +35,7 @@ def run_tests():
     assert retcode == 0, "Tests failed! see output"
 
 def main():
-    if DEBUG: run_tests() 
+    if DEBUG: run_tests()
 
     if len(argv) < 2:
         print("No XYZ source file provided!")

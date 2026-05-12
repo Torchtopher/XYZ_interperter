@@ -5,6 +5,8 @@ import xyz.parser.ast as AST
 from xyz.interpreter.interpreter import XYZInterpreter
 from xyz.interpreter.scoped_env import Scope
 
+dummyspan = ((0,0),(0,0))
+
 
 def scope(values: dict | None = None) -> Scope:
     env = Scope(None, "test")
@@ -36,52 +38,52 @@ def eval_file(ast_file: AST.File, global_var_table: dict | Scope | None = None):
     return interpreter.execute_ast(ast_file), interpreter.GVT
 
 
-ACCESS_AND_DEFINITION_AST = AST.Block(
+ACCESS_AND_DEFINITION_AST = AST.Block(dummyspan,
     statements=[
-        AST.Definition(
+        AST.Definition(dummyspan,
             const=False,
-            var=[AST.Var("a")],
+            var=[AST.Var(dummyspan,"a")],
             value=[
-                AST.LitTable(
+                AST.LitTable(dummyspan,
                     [
                         (
-                            AST.LitString("k"),
-                            AST.LitTable([(AST.LitString("b"), AST.LitInt(99))]),
+                            AST.LitString(dummyspan,"k"),
+                            AST.LitTable(dummyspan,[(AST.LitString(dummyspan,"b"), AST.LitInt(dummyspan,99))]),
                         )
                     ]
                 )
             ],
         ),
-        AST.Definition(
+        AST.Definition(dummyspan,
             const=True,
-            var=[AST.Var("fx_result")],
+            var=[AST.Var(dummyspan,"fx_result")],
             value=[
-                AST.LitTable(
+                AST.LitTable(dummyspan,
                     [
-                        (AST.LitString("c"), AST.LitString("k")),
+                        (AST.LitString(dummyspan,"c"), AST.LitString(dummyspan,"k")),
                     ]
                 )
             ],
         ),
-        AST.SetStatement(
+        AST.SetStatement(dummyspan,
             [
-                AST.Access(
-                    AST.Access(
-                        AST.Var("a"),
-                        AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+                AST.Access(dummyspan,
+                    AST.Access(dummyspan,
+                        AST.Var(dummyspan,"a"),
+                        AST.Access(dummyspan,AST.Var(dummyspan,"fx_result"), AST.LitString(dummyspan,"c")),
                     ),
-                    AST.LitString("b"),
+                    AST.LitString(dummyspan,"b"),
                 )
             ],
-            [AST.LitInt(10)],
+            [AST.LitInt(dummyspan,10)],
         ),
     ],
-    return_statement=AST.Access(
-        AST.Access(
-            AST.Var("a"),
-            AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+    return_statement=AST.Access(dummyspan,
+        AST.Access(dummyspan,
+            AST.Var(dummyspan,"a"),
+            AST.Access(dummyspan,AST.Var(dummyspan,"fx_result"), AST.LitString(dummyspan,"c")),
         ),
-        AST.LitString("b"),
+        AST.LitString(dummyspan,"b"),
     ),
 )
 
@@ -95,27 +97,27 @@ ACCESS_AND_DEFINITION_AST = AST.Block(
 
 def literal(value):
     if value is True:
-        return AST.LitTrue(True)
+        return AST.LitTrue(dummyspan,True)
     if value is False:
-        return AST.LitFalse(False)
+        return AST.LitFalse(dummyspan,False)
     if value is None:
-        return AST.LitNil(None)
+        return AST.LitNil(dummyspan,None)
     if isinstance(value, int):
-        return AST.LitInt(value)
+        return AST.LitInt(dummyspan,value)
     if isinstance(value, float):
-        return AST.LitFloat(value)
-    return AST.LitString(value)
+        return AST.LitFloat(dummyspan,value)
+    return AST.LitString(dummyspan,value)
 
 
 @pytest.mark.parametrize(
     ("expr", "expected"),
     [
-        (AST.LitFalse(False), False),
-        (AST.LitTrue(True), True),
-        (AST.LitNil(None), None),
-        (AST.LitInt(12), 12),
-        (AST.LitFloat(12.34), 12.34),
-        (AST.LitString("hello"), "hello"),
+        (AST.LitFalse(dummyspan,False), False),
+        (AST.LitTrue(dummyspan,True), True),
+        (AST.LitNil(dummyspan,None), None),
+        (AST.LitInt(dummyspan,12), 12),
+        (AST.LitFloat(dummyspan,12.34), 12.34),
+        (AST.LitString(dummyspan,"hello"), "hello"),
     ],
 )
 def test_evaluates_literal_expressions(expr, expected):
@@ -125,10 +127,10 @@ def test_evaluates_literal_expressions(expr, expected):
 
 def test_evaluates_table_expression():
     # return {"name": "xyz", 1: true}
-    expr = AST.LitTable(
+    expr = AST.LitTable(dummyspan,
         [
-            (AST.LitString("name"), AST.LitString("xyz")),
-            (AST.LitInt(1), AST.LitTrue(True)),
+            (AST.LitString(dummyspan,"name"), AST.LitString(dummyspan,"xyz")),
+            (AST.LitInt(dummyspan,1), AST.LitTrue(dummyspan,True)),
         ]
     )
 
@@ -138,14 +140,14 @@ def test_evaluates_table_expression():
 @pytest.mark.parametrize(
     ("expr", "expected"),
     [
-        (AST.UnaryExpression(AST.UnExpType.NOT, AST.LitTrue(True)), False),
-        (AST.UnaryExpression(AST.UnExpType.NOT, AST.LitFalse(False)), True),
-        (AST.UnaryExpression(AST.UnExpType.NOT, AST.LitNil(None)), True),
-        (AST.UnaryExpression(AST.UnExpType.NEG, AST.LitInt(10)), -10),
+        (AST.UnaryExpression(dummyspan,AST.UnExpType.NOT, AST.LitTrue(dummyspan,True)), False),
+        (AST.UnaryExpression(dummyspan,AST.UnExpType.NOT, AST.LitFalse(dummyspan,False)), True),
+        (AST.UnaryExpression(dummyspan,AST.UnExpType.NOT, AST.LitNil(dummyspan,None)), True),
+        (AST.UnaryExpression(dummyspan,AST.UnExpType.NEG, AST.LitInt(dummyspan,10)), -10),
         (
-            AST.UnaryExpression(
+            AST.UnaryExpression(dummyspan,
                 AST.UnExpType.SIZE,
-                AST.LitTable([(AST.LitString("key"), AST.LitInt(1))]),
+                AST.LitTable(dummyspan,[(AST.LitString(dummyspan,"key"), AST.LitInt(dummyspan,1))]),
             ),
             1,
         ),
@@ -186,7 +188,7 @@ def test_evaluates_binary_expressions(operator, left, right, expected):
     # Source expressions covered: 7 + 3, 7 - 3, 7 * 3, 7 / 2,
     # 7 // 2, 2 ** 3, 7 % 3, comparisons, bit ops, shifts,
     # equality, and/or, and "x" .. 7.
-    expr = AST.BinaryExpression(
+    expr = AST.BinaryExpression(dummyspan,
         operator,
         literal(left),
         literal(right),
@@ -198,13 +200,13 @@ def test_evaluates_binary_expressions(operator, left, right, expected):
 def test_evaluates_var_expression_from_global_var_table():
     # let answer = 42
     # return answer
-    assert eval_expr(AST.Var("answer"), {"answer": 42}) == 42
+    assert eval_expr(AST.Var(dummyspan,"answer"), {"answer": 42}) == 42
 
 
 def test_evaluates_access_expression():
     # let table_name = {"field": 99}
     # return table_name.field
-    expr = AST.Access(AST.Var("table_name"), AST.LitString("field"))
+    expr = AST.Access(dummyspan,AST.Var(dummyspan,"table_name"), AST.LitString(dummyspan,"field"))
     assert eval_expr(expr, {"table_name": {"field": 99}}) == 99
 
 
@@ -212,15 +214,15 @@ def test_evaluates_nested_access_chain_with_access_as_index():
     # let a = {"k": {"b": 99}}
     # let fx_result = {"c": "k"}
     # return a[fx_result.c].b
-    expr = AST.Access(
-        AST.Access(
-            AST.Var("a"),
-            AST.Access(
-                AST.Var("fx_result"),
-                AST.LitString("c"),
+    expr = AST.Access(dummyspan,
+        AST.Access(dummyspan,
+            AST.Var(dummyspan,"a"),
+            AST.Access(dummyspan,
+                AST.Var(dummyspan,"fx_result"),
+                AST.LitString(dummyspan,"c"),
             ),
         ),
-        AST.LitString("b"),
+        AST.LitString(dummyspan,"b"),
     )
     global_var_table = {
         "a": {
@@ -252,10 +254,10 @@ def test_example_ast_defines_values_sets_nested_access_and_returns_result():
 
 def test_definition_creates_let_variable():
     # let a = 10
-    statement = AST.Definition(
+    statement = AST.Definition(dummyspan,
         const=False,
-        var=[AST.Var("a")],
-        value=[AST.LitInt(10)],
+        var=[AST.Var(dummyspan,"a")],
+        value=[AST.LitInt(dummyspan,10)],
     )
 
     env = exec_stmt(statement)
@@ -266,10 +268,10 @@ def test_definition_creates_let_variable():
 
 def test_definition_creates_const_variable():
     # const a = 10
-    statement = AST.Definition(
+    statement = AST.Definition(dummyspan,
         const=True,
-        var=[AST.Var("a")],
-        value=[AST.LitInt(10)],
+        var=[AST.Var(dummyspan,"a")],
+        value=[AST.LitInt(dummyspan,10)],
     )
 
     env = exec_stmt(statement)
@@ -280,10 +282,10 @@ def test_definition_creates_const_variable():
 
 def test_definition_creates_multiple_variables():
     # let a, b = 1, "two"
-    statement = AST.Definition(
+    statement = AST.Definition(dummyspan,
         const=False,
-        var=[AST.Var("a"), AST.Var("b")],
-        value=[AST.LitInt(1), AST.LitString("two")],
+        var=[AST.Var(dummyspan,"a"), AST.Var(dummyspan,"b")],
+        value=[AST.LitInt(dummyspan,1), AST.LitString(dummyspan,"two")],
     )
 
     assert scope_values(exec_stmt(statement)) == {"a": 1, "b": "two"}
@@ -292,9 +294,9 @@ def test_definition_creates_multiple_variables():
 def test_set_statement_replaces_existing_variable():
     # let a = 10
     # a = 20
-    statement = AST.SetStatement(
-        [AST.Access(AST.Var("a"), None)],
-        [AST.LitInt(20)],
+    statement = AST.SetStatement(dummyspan,
+        [AST.Access(dummyspan,AST.Var(dummyspan,"a"), None)],
+        [AST.LitInt(dummyspan,20)],
     )
 
     assert exec_stmt(statement, {"a": 10}).get("a") == 20
@@ -303,13 +305,13 @@ def test_set_statement_replaces_existing_variable():
 def test_set_statement_evaluates_value_expression_before_assignment():
     # let a = 0
     # a = 2 + 3
-    statement = AST.SetStatement(
-        [AST.Access(AST.Var("a"), None)],
+    statement = AST.SetStatement(dummyspan,
+        [AST.Access(dummyspan,AST.Var(dummyspan,"a"), None)],
         [
-            AST.BinaryExpression(
+            AST.BinaryExpression(dummyspan,
                 AST.BinExpType.ADD,
-                AST.LitInt(2),
-                AST.LitInt(3),
+                AST.LitInt(dummyspan,2),
+                AST.LitInt(dummyspan,3),
             )
         ],
     )
@@ -320,9 +322,9 @@ def test_set_statement_evaluates_value_expression_before_assignment():
 def test_set_statement_assigns_into_existing_table():
     # let a = {}
     # a.b = 10
-    statement = AST.SetStatement(
-        [AST.Access(AST.Var("a"), AST.LitString("b"))],
-        [AST.LitInt(10)],
+    statement = AST.SetStatement(dummyspan,
+        [AST.Access(dummyspan,AST.Var(dummyspan,"a"), AST.LitString(dummyspan,"b"))],
+        [AST.LitInt(dummyspan,10)],
     )
 
     assert scope_values(exec_stmt(statement, {"a": {}})) == {"a": {"b": 10}}
@@ -331,14 +333,14 @@ def test_set_statement_assigns_into_existing_table():
 def test_set_statement_assigns_into_nested_access_target():
     # let a = {"b": {}}
     # a.b.c = 10
-    statement = AST.SetStatement(
+    statement = AST.SetStatement(dummyspan,
         [
-            AST.Access(
-                AST.Access(AST.Var("a"), AST.LitString("b")),
-                AST.LitString("c"),
+            AST.Access(dummyspan,
+                AST.Access(dummyspan,AST.Var(dummyspan,"a"), AST.LitString(dummyspan,"b")),
+                AST.LitString(dummyspan,"c"),
             )
         ],
-        [AST.LitInt(10)],
+        [AST.LitInt(dummyspan,10)],
     )
 
     assert scope_values(exec_stmt(statement, {"a": {"b": {}}})) == {
@@ -350,14 +352,14 @@ def test_set_statement_assigns_with_access_expression_as_index():
     # let a = {"k": 1}
     # let fx_result = {"c": "k"}
     # a[fx_result.c] = 10
-    statement = AST.SetStatement(
+    statement = AST.SetStatement(dummyspan,
         [
-            AST.Access(
-                AST.Var("a"),
-                AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+            AST.Access(dummyspan,
+                AST.Var(dummyspan,"a"),
+                AST.Access(dummyspan,AST.Var(dummyspan,"fx_result"), AST.LitString(dummyspan,"c")),
             )
         ],
-        [AST.LitInt(10)],
+        [AST.LitInt(dummyspan,10)],
     )
     global_var_table = {
         "a": {"k": 1},
@@ -374,17 +376,17 @@ def test_set_statement_assigns_into_nested_target_with_computed_inner_index():
     # let a = {"k": {"b": 99}}
     # let fx_result = {"c": "k"}
     # a[fx_result.c].b = 10
-    statement = AST.SetStatement(
+    statement = AST.SetStatement(dummyspan,
         [
-            AST.Access(
-                AST.Access(
-                    AST.Var("a"),
-                    AST.Access(AST.Var("fx_result"), AST.LitString("c")),
+            AST.Access(dummyspan,
+                AST.Access(dummyspan,
+                    AST.Var(dummyspan,"a"),
+                    AST.Access(dummyspan,AST.Var(dummyspan,"fx_result"), AST.LitString(dummyspan,"c")),
                 ),
-                AST.LitString("b"),
+                AST.LitString(dummyspan,"b"),
             )
         ],
-        [AST.LitInt(10)],
+        [AST.LitInt(dummyspan,10)],
     )
     global_var_table = {
         "a": {"k": {"b": 99}},
@@ -401,14 +403,14 @@ def test_set_statement_assigns_multiple_existing_targets():
     # let a = 0
     # let table = {}
     # a, table.field = 1, "value"
-    statement = AST.SetStatement(
+    statement = AST.SetStatement(dummyspan,
         [
-            AST.Access(AST.Var("a"), None),
-            AST.Access(AST.Var("table"), AST.LitString("field")),
+            AST.Access(dummyspan,AST.Var(dummyspan,"a"), None),
+            AST.Access(dummyspan,AST.Var(dummyspan,"table"), AST.LitString(dummyspan,"field")),
         ],
         [
-            AST.LitInt(1),
-            AST.LitString("value"),
+            AST.LitInt(dummyspan,1),
+            AST.LitString(dummyspan,"value"),
         ],
     )
 
@@ -420,9 +422,9 @@ def test_set_statement_assigns_multiple_existing_targets():
 
 def test_set_statement_rejects_unbound_variable_assignment():
     # a = 1
-    statement = AST.SetStatement(
-        [AST.Access(AST.Var("a"), None)],
-        [AST.LitInt(1)],
+    statement = AST.SetStatement(dummyspan,
+        [AST.Access(dummyspan,AST.Var(dummyspan,"a"), None)],
+        [AST.LitInt(dummyspan,1)],
     )
 
     with pytest.raises(RuntimeError, match="unbound variable"):
@@ -434,9 +436,9 @@ def test_set_statement_rejects_const_variable_reassignment():
     # a = 2
     env = scope()
     env.define("a", 1, const=True)
-    statement = AST.SetStatement(
-        [AST.Access(AST.Var("a"), None)],
-        [AST.LitInt(2)],
+    statement = AST.SetStatement(dummyspan,
+        [AST.Access(dummyspan,AST.Var(dummyspan,"a"), None)],
+        [AST.LitInt(dummyspan,2)],
     )
 
     with pytest.raises(RuntimeError, match="const variable"):
@@ -448,9 +450,9 @@ def test_set_statement_can_mutate_table_stored_in_const_variable():
     # a.b = 2
     env = scope()
     env.define("a", {"b": 1}, const=True)
-    statement = AST.SetStatement(
-        [AST.Access(AST.Var("a"), AST.LitString("b"))],
-        [AST.LitInt(2)],
+    statement = AST.SetStatement(dummyspan,
+        [AST.Access(dummyspan,AST.Var(dummyspan,"a"), AST.LitString(dummyspan,"b"))],
+        [AST.LitInt(dummyspan,2)],
     )
 
     assert scope_values(exec_stmt(statement, env)) == {"a": {"b": 2}}
@@ -458,12 +460,12 @@ def test_set_statement_can_mutate_table_stored_in_const_variable():
 
 def test_set_statement_rejects_mismatched_target_and_value_counts():
     # a, b = 1
-    statement = AST.SetStatement(
+    statement = AST.SetStatement(dummyspan,
         [
-            AST.Access(AST.Var("a"), None),
-            AST.Access(AST.Var("b"), None),
+            AST.Access(dummyspan,AST.Var(dummyspan,"a"), None),
+            AST.Access(dummyspan,AST.Var(dummyspan,"b"), None),
         ],
-        [AST.LitInt(1)],
+        [AST.LitInt(dummyspan,1)],
     )
 
     with pytest.raises(RuntimeError, match="same number"):
@@ -472,10 +474,10 @@ def test_set_statement_rejects_mismatched_target_and_value_counts():
 
 def test_definition_rejects_mismatched_target_and_value_counts():
     # let a, b = 1
-    statement = AST.Definition(
+    statement = AST.Definition(dummyspan,
         const=False,
-        var=[AST.Var("a"), AST.Var("b")],
-        value=[AST.LitInt(1)],
+        var=[AST.Var(dummyspan,"a"), AST.Var(dummyspan,"b")],
+        value=[AST.LitInt(dummyspan,1)],
     )
 
     with pytest.raises(RuntimeError, match="same number"):
@@ -485,9 +487,9 @@ def test_definition_rejects_mismatched_target_and_value_counts():
 def test_set_statement_rejects_no_index_target_that_is_not_a_variable():
     # Invalid lowered AST, roughly trying to assign to a literal target:
     # "not_a_var" = 1
-    statement = AST.SetStatement(
-        [AST.Access(AST.LitString("not_a_var"), None)],
-        [AST.LitInt(1)],
+    statement = AST.SetStatement(dummyspan,
+        [AST.Access(dummyspan,AST.LitString(dummyspan,"not_a_var"), None)],
+        [AST.LitInt(dummyspan,1)],
     )
 
     with pytest.raises(AssertionError, match="must be a variable"):
@@ -500,27 +502,27 @@ def test_for_loop_updates_outer_variable():
     #     sum = sum + i
     # end
     # return sum
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("sum")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"sum")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.ForLoop(
+            AST.ForLoop(dummyspan,
                 var="i",
-                start=AST.LitInt(1),
-                end=AST.LitInt(4),
-                step=AST.LitInt(1),
-                block=AST.Block(
+                start=AST.LitInt(dummyspan,1),
+                end=AST.LitInt(dummyspan,4),
+                step=AST.LitInt(dummyspan,1),
+                block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("sum"), None)],
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"sum"), None)],
                             value=[
-                                AST.BinaryExpression(
+                                AST.BinaryExpression(dummyspan,
                                     AST.BinExpType.ADD,
-                                    AST.Var("sum"),
-                                    AST.Var("i"),
+                                    AST.Var(dummyspan,"sum"),
+                                    AST.Var(dummyspan,"i"),
                                 )
                             ],
                         )
@@ -529,7 +531,7 @@ def test_for_loop_updates_outer_variable():
                 ),
             ),
         ],
-        return_statement=AST.Var("sum"),
+        return_statement=AST.Var(dummyspan,"sum"),
     )
 
     result, env = eval_file(ast_file)
@@ -542,20 +544,20 @@ def test_for_loop_variable_is_not_visible_after_loop():
     # for i = 1, 2, 1 do
     # end
     # return i
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.ForLoop(
+            AST.ForLoop(dummyspan,
                 var="i",
-                start=AST.LitInt(1),
-                end=AST.LitInt(2),
-                step=AST.LitInt(1),
-                block=AST.Block(
+                start=AST.LitInt(dummyspan,1),
+                end=AST.LitInt(dummyspan,2),
+                step=AST.LitInt(dummyspan,1),
+                block=AST.Block(dummyspan,
                     statements=[],
                     return_statement=None,
                 ),
             ),
         ],
-        return_statement=AST.Var("i"),
+        return_statement=AST.Var(dummyspan,"i"),
     )
 
     with pytest.raises(RuntimeError, match="unbound variable"):
@@ -568,30 +570,30 @@ def test_for_loop_does_not_run_body_when_range_is_empty():
     #     sum = 99
     # end
     # return sum
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("sum")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"sum")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.ForLoop(
+            AST.ForLoop(dummyspan,
                 var="i",
-                start=AST.LitInt(4),
-                end=AST.LitInt(1),
-                step=AST.LitInt(1),
-                block=AST.Block(
+                start=AST.LitInt(dummyspan,4),
+                end=AST.LitInt(dummyspan,1),
+                step=AST.LitInt(dummyspan,1),
+                block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("sum"), None)],
-                            value=[AST.LitInt(99)],
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"sum"), None)],
+                            value=[AST.LitInt(dummyspan,99)],
                         )
                     ],
                     return_statement=None,
                 ),
             ),
         ],
-        return_statement=AST.Var("sum"),
+        return_statement=AST.Var(dummyspan,"sum"),
     )
 
     result, env = eval_file(ast_file)
@@ -609,51 +611,51 @@ def test_break_exits_nearest_for_loop_and_continues_after_loop():
     # end
     # sum = sum + 10
     # return sum
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("sum")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"sum")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.ForLoop(
+            AST.ForLoop(dummyspan,
                 var="i",
-                start=AST.LitInt(1),
-                end=AST.LitInt(10),
-                step=AST.LitInt(1),
-                block=AST.Block(
+                start=AST.LitInt(dummyspan,1),
+                end=AST.LitInt(dummyspan,10),
+                step=AST.LitInt(dummyspan,1),
+                block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("sum"), None)],
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"sum"), None)],
                             value=[
-                                AST.BinaryExpression(
+                                AST.BinaryExpression(dummyspan,
                                     AST.BinExpType.ADD,
-                                    AST.Var("sum"),
-                                    AST.Var("i"),
+                                    AST.Var(dummyspan,"sum"),
+                                    AST.Var(dummyspan,"i"),
                                 )
                             ],
                         ),
-                        AST.Break(),
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("sum"), None)],
-                            value=[AST.LitInt(999)],
+                        AST.Break(dummyspan,),
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"sum"), None)],
+                            value=[AST.LitInt(dummyspan,999)],
                         ),
                     ],
                     return_statement=None,
                 ),
             ),
-            AST.SetStatement(
-                var=[AST.Access(AST.Var("sum"), None)],
+            AST.SetStatement(dummyspan,
+                var=[AST.Access(dummyspan,AST.Var(dummyspan,"sum"), None)],
                 value=[
-                    AST.BinaryExpression(
+                    AST.BinaryExpression(dummyspan,
                         AST.BinExpType.ADD,
-                        AST.Var("sum"),
-                        AST.LitInt(10),
+                        AST.Var(dummyspan,"sum"),
+                        AST.LitInt(dummyspan,10),
                     )
                 ],
             ),
         ],
-        return_statement=AST.Var("sum"),
+        return_statement=AST.Var(dummyspan,"sum"),
     )
 
     result, env = eval_file(ast_file)
@@ -671,36 +673,36 @@ def test_function_sums_one_to_ten_and_returns_result():
     #     return sum
     # end
     # return a()
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("a")],
+                var=[AST.Var(dummyspan,"a")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=[],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[
-                                AST.Definition(
+                                AST.Definition(dummyspan,
                                     const=False,
-                                    var=[AST.Var("sum")],
-                                    value=[AST.LitInt(0)],
+                                    var=[AST.Var(dummyspan,"sum")],
+                                    value=[AST.LitInt(dummyspan,0)],
                                 ),
-                                AST.ForLoop(
+                                AST.ForLoop(dummyspan,
                                     var="i",
-                                    start=AST.LitInt(1),
-                                    end=AST.LitInt(11),
-                                    step=AST.LitInt(1),
-                                    block=AST.Block(
+                                    start=AST.LitInt(dummyspan,1),
+                                    end=AST.LitInt(dummyspan,11),
+                                    step=AST.LitInt(dummyspan,1),
+                                    block=AST.Block(dummyspan,
                                         statements=[
-                                            AST.SetStatement(
-                                                var=[AST.Access(AST.Var("sum"), None)],
+                                            AST.SetStatement(dummyspan,
+                                                var=[AST.Access(dummyspan,AST.Var(dummyspan,"sum"), None)],
                                                 value=[
-                                                    AST.BinaryExpression(
+                                                    AST.BinaryExpression(dummyspan,
                                                         AST.BinExpType.ADD,
-                                                        AST.Var("sum"),
-                                                        AST.Var("i"),
+                                                        AST.Var(dummyspan,"sum"),
+                                                        AST.Var(dummyspan,"i"),
                                                     )
                                                 ],
                                             )
@@ -709,15 +711,15 @@ def test_function_sums_one_to_ten_and_returns_result():
                                     ),
                                 ),
                             ],
-                            return_statement=AST.Var("sum"),
+                            return_statement=AST.Var(dummyspan,"sum"),
                         ),
                     )
                 ],
             )
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Var("a"),
+            source=AST.Var(dummyspan,"a"),
             args=[],
         ),
     )
@@ -732,31 +734,31 @@ def test_function_call_binds_parameters_and_returns_expression():
     #     return a + b
     # end
     # return add(2, 3)
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("add")],
+                var=[AST.Var(dummyspan,"add")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=["a", "b"],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[],
-                            return_statement=AST.BinaryExpression(
+                            return_statement=AST.BinaryExpression(dummyspan,
                                 AST.BinExpType.ADD,
-                                AST.Var("a"),
-                                AST.Var("b"),
+                                AST.Var(dummyspan,"a"),
+                                AST.Var(dummyspan,"b"),
                             ),
                         ),
                     )
                 ],
             )
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Var("add"),
-            args=[AST.LitInt(2), AST.LitInt(3)],
+            source=AST.Var(dummyspan,"add"),
+            args=[AST.LitInt(dummyspan,2), AST.LitInt(dummyspan,3)],
         ),
     )
 
@@ -770,31 +772,31 @@ def test_function_call_missing_arguments_are_bound_to_nil():
     #     return b == nil
     # end
     # return missing_second(1)
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("missing_second")],
+                var=[AST.Var(dummyspan,"missing_second")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=["a", "b"],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[],
-                            return_statement=AST.BinaryExpression(
+                            return_statement=AST.BinaryExpression(dummyspan,
                                 AST.BinExpType.EQUAL,
-                                AST.Var("b"),
-                                AST.LitNil(None),
+                                AST.Var(dummyspan,"b"),
+                                AST.LitNil(dummyspan,None),
                             ),
                         ),
                     )
                 ],
             )
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Var("missing_second"),
-            args=[AST.LitInt(1)],
+            source=AST.Var(dummyspan,"missing_second"),
+            args=[AST.LitInt(dummyspan,1)],
         ),
     )
 
@@ -808,27 +810,27 @@ def test_function_call_ignores_extra_arguments_without_extra_binding():
     #     return a
     # end
     # return first(1, 99)
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("first")],
+                var=[AST.Var(dummyspan,"first")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=["a"],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[],
-                            return_statement=AST.Var("a"),
+                            return_statement=AST.Var(dummyspan,"a"),
                         ),
                     )
                 ],
             )
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Var("first"),
-            args=[AST.LitInt(1), AST.LitInt(99)],
+            source=AST.Var(dummyspan,"first"),
+            args=[AST.LitInt(dummyspan,1), AST.LitInt(dummyspan,99)],
         ),
     )
 
@@ -842,27 +844,27 @@ def test_function_call_captures_extra_arguments_in_table():
     #     return rest[1]
     # end
     # return third_arg(10, 20, 30)
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("third_arg")],
+                var=[AST.Var(dummyspan,"third_arg")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=["first"],
                         extra="rest",
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[],
-                            return_statement=AST.Access(AST.Var("rest"), AST.LitInt(1)),
+                            return_statement=AST.Access(dummyspan,AST.Var(dummyspan,"rest"), AST.LitInt(dummyspan,1)),
                         ),
                     )
                 ],
             )
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Var("third_arg"),
-            args=[AST.LitInt(10), AST.LitInt(20), AST.LitInt(30)],
+            source=AST.Var(dummyspan,"third_arg"),
+            args=[AST.LitInt(dummyspan,10), AST.LitInt(dummyspan,20), AST.LitInt(dummyspan,30)],
         ),
     )
 
@@ -878,35 +880,35 @@ def test_function_closure_reads_outer_variable():
     # end
     # x = 11
     # return read_x()
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("x")],
-                value=[AST.LitInt(10)],
+                var=[AST.Var(dummyspan,"x")],
+                value=[AST.LitInt(dummyspan,10)],
             ),
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("read_x")],
+                var=[AST.Var(dummyspan,"read_x")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=[],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[],
-                            return_statement=AST.Var("x"),
+                            return_statement=AST.Var(dummyspan,"x"),
                         ),
                     )
                 ],
             ),
-            AST.SetStatement(
-                var=[AST.Access(AST.Var("x"), None)],
-                value=[AST.LitInt(11)],
+            AST.SetStatement(dummyspan,
+                var=[AST.Access(dummyspan,AST.Var(dummyspan,"x"), None)],
+                value=[AST.LitInt(dummyspan,11)],
             ),
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Var("read_x"),
+            source=AST.Var(dummyspan,"read_x"),
             args=[],
         ),
     )
@@ -923,41 +925,41 @@ def test_function_closure_can_update_outer_variable():
     #     return count
     # end
     # return inc() + inc()
-    inc_call = AST.FunctionCall(method=False, source=AST.Var("inc"), args=[])
-    ast_file = AST.Block(
+    inc_call = AST.FunctionCall(dummyspan,method=False, source=AST.Var(dummyspan,"inc"), args=[])
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("count")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"count")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("inc")],
+                var=[AST.Var(dummyspan,"inc")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=[],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[
-                                AST.SetStatement(
-                                    var=[AST.Access(AST.Var("count"), None)],
+                                AST.SetStatement(dummyspan,
+                                    var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
                                     value=[
-                                        AST.BinaryExpression(
+                                        AST.BinaryExpression(dummyspan,
                                             AST.BinExpType.ADD,
-                                            AST.Var("count"),
-                                            AST.LitInt(1),
+                                            AST.Var(dummyspan,"count"),
+                                            AST.LitInt(dummyspan,1),
                                         )
                                     ],
                                 )
                             ],
-                            return_statement=AST.Var("count"),
+                            return_statement=AST.Var(dummyspan,"count"),
                         ),
                     )
                 ],
             ),
         ],
-        return_statement=AST.BinaryExpression(
+        return_statement=AST.BinaryExpression(dummyspan,
             AST.BinExpType.ADD,
             inc_call,
             inc_call,
@@ -978,26 +980,26 @@ def test_function_closure_returned_from_function_keeps_captured_scope():
     # end
     # const add_five = make_adder(5)
     # return add_five(3)
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("make_adder")],
+                var=[AST.Var(dummyspan,"make_adder")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=["x"],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[],
-                            return_statement=AST.Lambda(
+                            return_statement=AST.Lambda(dummyspan,
                                 parameters=["y"],
                                 extra=None,
-                                block=AST.Block(
+                                block=AST.Block(dummyspan,
                                     statements=[],
-                                    return_statement=AST.BinaryExpression(
+                                    return_statement=AST.BinaryExpression(dummyspan,
                                         AST.BinExpType.ADD,
-                                        AST.Var("x"),
-                                        AST.Var("y"),
+                                        AST.Var(dummyspan,"x"),
+                                        AST.Var(dummyspan,"y"),
                                     ),
                                 ),
                             ),
@@ -1005,22 +1007,22 @@ def test_function_closure_returned_from_function_keeps_captured_scope():
                     )
                 ],
             ),
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("add_five")],
+                var=[AST.Var(dummyspan,"add_five")],
                 value=[
-                    AST.FunctionCall(
+                    AST.FunctionCall(dummyspan,
                         method=False,
-                        source=AST.Var("make_adder"),
-                        args=[AST.LitInt(5)],
+                        source=AST.Var(dummyspan,"make_adder"),
+                        args=[AST.LitInt(dummyspan,5)],
                     )
                 ],
             ),
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Var("add_five"),
-            args=[AST.LitInt(3)],
+            source=AST.Var(dummyspan,"add_five"),
+            args=[AST.LitInt(dummyspan,3)],
         ),
     )
 
@@ -1037,37 +1039,37 @@ def test_method_call_passes_receiver_as_first_argument():
     #     end,
     # }
     # return obj:add(5)
-    method = AST.Lambda(
+    method = AST.Lambda(dummyspan,
         parameters=["self", "x"],
         extra=None,
-        block=AST.Block(
+        block=AST.Block(dummyspan,
             statements=[],
-            return_statement=AST.BinaryExpression(
+            return_statement=AST.BinaryExpression(dummyspan,
                 AST.BinExpType.ADD,
-                AST.Access(AST.Var("self"), AST.LitString("base")),
-                AST.Var("x"),
+                AST.Access(dummyspan,AST.Var(dummyspan,"self"), AST.LitString(dummyspan,"base")),
+                AST.Var(dummyspan,"x"),
             ),
         ),
     )
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("obj")],
+                var=[AST.Var(dummyspan,"obj")],
                 value=[
-                    AST.LitTable(
+                    AST.LitTable(dummyspan,
                         [
-                            (AST.LitString("base"), AST.LitInt(10)),
-                            (AST.LitString("add"), method),
+                            (AST.LitString(dummyspan,"base"), AST.LitInt(dummyspan,10)),
+                            (AST.LitString(dummyspan,"add"), method),
                         ]
                     )
                 ],
             )
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=True,
-            source=AST.Access(AST.Var("obj"), AST.LitString("add")),
-            args=[AST.LitInt(5)],
+            source=AST.Access(dummyspan,AST.Var(dummyspan,"obj"), AST.LitString(dummyspan,"add")),
+            args=[AST.LitInt(dummyspan,5)],
         ),
     )
 
@@ -1083,32 +1085,32 @@ def test_normal_dot_call_does_not_pass_receiver():
     #     end,
     # }
     # return obj.id(7)
-    method = AST.Lambda(
+    method = AST.Lambda(dummyspan,
         parameters=["x"],
         extra=None,
-        block=AST.Block(
+        block=AST.Block(dummyspan,
             statements=[],
-            return_statement=AST.Var("x"),
+            return_statement=AST.Var(dummyspan,"x"),
         ),
     )
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("obj")],
+                var=[AST.Var(dummyspan,"obj")],
                 value=[
-                    AST.LitTable(
+                    AST.LitTable(dummyspan,
                         [
-                            (AST.LitString("id"), method),
+                            (AST.LitString(dummyspan,"id"), method),
                         ]
                     )
                 ],
             )
         ],
-        return_statement=AST.FunctionCall(
+        return_statement=AST.FunctionCall(dummyspan,
             method=False,
-            source=AST.Access(AST.Var("obj"), AST.LitString("id")),
-            args=[AST.LitInt(7)],
+            source=AST.Access(dummyspan,AST.Var(dummyspan,"obj"), AST.LitString(dummyspan,"id")),
+            args=[AST.LitInt(dummyspan,7)],
         ),
     )
 
@@ -1125,45 +1127,45 @@ def test_function_call_statement_runs_for_side_effects_and_ignores_return_value(
     # end
     # inc()
     # return count
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("count")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"count")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("inc")],
+                var=[AST.Var(dummyspan,"inc")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=[],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[
-                                AST.SetStatement(
-                                    var=[AST.Access(AST.Var("count"), None)],
+                                AST.SetStatement(dummyspan,
+                                    var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
                                     value=[
-                                        AST.BinaryExpression(
+                                        AST.BinaryExpression(dummyspan,
                                             AST.BinExpType.ADD,
-                                            AST.Var("count"),
-                                            AST.LitInt(1),
+                                            AST.Var(dummyspan,"count"),
+                                            AST.LitInt(dummyspan,1),
                                         )
                                     ],
                                 )
                             ],
-                            return_statement=AST.LitInt(999),
+                            return_statement=AST.LitInt(dummyspan,999),
                         ),
                     )
                 ],
             ),
-            AST.FunctionCall(
+            AST.FunctionCall(dummyspan,
                 method=False,
-                source=AST.Var("inc"),
+                source=AST.Var(dummyspan,"inc"),
                 args=[],
             ),
         ],
-        return_statement=AST.Var("count"),
+        return_statement=AST.Var(dummyspan,"count"),
     )
 
     result, env = eval_file(ast_file)
@@ -1179,27 +1181,27 @@ def test_block_statement_uses_inner_scope_and_can_update_outer_variable():
     #     outer = outer + inner
     # end
     # return outer
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("outer")],
-                value=[AST.LitInt(1)],
+                var=[AST.Var(dummyspan,"outer")],
+                value=[AST.LitInt(dummyspan,1)],
             ),
-            AST.Block(
+            AST.Block(dummyspan,
                 statements=[
-                    AST.Definition(
+                    AST.Definition(dummyspan,
                         const=False,
-                        var=[AST.Var("inner")],
-                        value=[AST.LitInt(10)],
+                        var=[AST.Var(dummyspan,"inner")],
+                        value=[AST.LitInt(dummyspan,10)],
                     ),
-                    AST.SetStatement(
-                        var=[AST.Access(AST.Var("outer"), None)],
+                    AST.SetStatement(dummyspan,
+                        var=[AST.Access(dummyspan,AST.Var(dummyspan,"outer"), None)],
                         value=[
-                            AST.BinaryExpression(
+                            AST.BinaryExpression(dummyspan,
                                 AST.BinExpType.ADD,
-                                AST.Var("outer"),
-                                AST.Var("inner"),
+                                AST.Var(dummyspan,"outer"),
+                                AST.Var(dummyspan,"inner"),
                             )
                         ],
                     ),
@@ -1207,7 +1209,7 @@ def test_block_statement_uses_inner_scope_and_can_update_outer_variable():
                 return_statement=None,
             ),
         ],
-        return_statement=AST.Var("outer"),
+        return_statement=AST.Var(dummyspan,"outer"),
     )
 
     result, env = eval_file(ast_file)
@@ -1224,28 +1226,28 @@ def test_while_loop_runs_until_condition_is_false():
     #     count = count + 1
     # end
     # return count
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("count")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"count")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.WhileLoop(
-                condition=AST.BinaryExpression(
+            AST.WhileLoop(dummyspan,
+                condition=AST.BinaryExpression(dummyspan,
                     AST.BinExpType.LESS,
-                    AST.Var("count"),
-                    AST.LitInt(3),
+                    AST.Var(dummyspan,"count"),
+                    AST.LitInt(dummyspan,3),
                 ),
-                block=AST.Block(
+                block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("count"), None)],
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
                             value=[
-                                AST.BinaryExpression(
+                                AST.BinaryExpression(dummyspan,
                                     AST.BinExpType.ADD,
-                                    AST.Var("count"),
-                                    AST.LitInt(1),
+                                    AST.Var(dummyspan,"count"),
+                                    AST.LitInt(dummyspan,1),
                                 )
                             ],
                         )
@@ -1254,7 +1256,7 @@ def test_while_loop_runs_until_condition_is_false():
                 ),
             ),
         ],
-        return_statement=AST.Var("count"),
+        return_statement=AST.Var(dummyspan,"count"),
     )
 
     result, env = eval_file(ast_file)
@@ -1272,48 +1274,48 @@ def test_while_loop_break_exits_loop_and_continues_after_loop():
     # end
     # count = count + 10
     # return count
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("count")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"count")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.WhileLoop(
-                condition=AST.LitTrue(True),
-                block=AST.Block(
+            AST.WhileLoop(dummyspan,
+                condition=AST.LitTrue(dummyspan,True),
+                block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("count"), None)],
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
                             value=[
-                                AST.BinaryExpression(
+                                AST.BinaryExpression(dummyspan,
                                     AST.BinExpType.ADD,
-                                    AST.Var("count"),
-                                    AST.LitInt(1),
+                                    AST.Var(dummyspan,"count"),
+                                    AST.LitInt(dummyspan,1),
                                 )
                             ],
                         ),
-                        AST.Break(),
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("count"), None)],
-                            value=[AST.LitInt(999)],
+                        AST.Break(dummyspan,),
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
+                            value=[AST.LitInt(dummyspan,999)],
                         ),
                     ],
                     return_statement=None,
                 ),
             ),
-            AST.SetStatement(
-                var=[AST.Access(AST.Var("count"), None)],
+            AST.SetStatement(dummyspan,
+                var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
                 value=[
-                    AST.BinaryExpression(
+                    AST.BinaryExpression(dummyspan,
                         AST.BinExpType.ADD,
-                        AST.Var("count"),
-                        AST.LitInt(10),
+                        AST.Var(dummyspan,"count"),
+                        AST.LitInt(dummyspan,10),
                     )
                 ],
             ),
         ],
-        return_statement=AST.Var("count"),
+        return_statement=AST.Var(dummyspan,"count"),
     )
 
     result, env = eval_file(ast_file)
@@ -1329,34 +1331,34 @@ def test_repeat_loop_runs_body_at_least_once_and_break_exits():
     #     break
     # until true
     # return count
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("count")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"count")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.RepeatLoop(
-                condition=AST.LitTrue(True),
-                block=AST.Block(
+            AST.RepeatLoop(dummyspan,
+                condition=AST.LitTrue(dummyspan,True),
+                block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("count"), None)],
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
                             value=[
-                                AST.BinaryExpression(
+                                AST.BinaryExpression(dummyspan,
                                     AST.BinExpType.ADD,
-                                    AST.Var("count"),
-                                    AST.LitInt(1),
+                                    AST.Var(dummyspan,"count"),
+                                    AST.LitInt(dummyspan,1),
                                 )
                             ],
                         ),
-                        AST.Break(),
+                        AST.Break(dummyspan,),
                     ],
                     return_statement=None,
                 ),
             ),
         ],
-        return_statement=AST.Var("count"),
+        return_statement=AST.Var(dummyspan,"count"),
     )
 
     result, env = eval_file(ast_file)
@@ -1375,46 +1377,46 @@ def test_if_statement_executes_first_truthy_branch_only():
     #     value = 3
     # end
     # return value
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("value")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"value")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.IfStatement(
+            AST.IfStatement(dummyspan,
                 conditions=[
                     (
-                        AST.LitFalse(False),
-                        AST.Block(
+                        AST.LitFalse(dummyspan,False),
+                        AST.Block(dummyspan,
                             statements=[
-                                AST.SetStatement(
-                                    var=[AST.Access(AST.Var("value"), None)],
-                                    value=[AST.LitInt(1)],
+                                AST.SetStatement(dummyspan,
+                                    var=[AST.Access(dummyspan,AST.Var(dummyspan,"value"), None)],
+                                    value=[AST.LitInt(dummyspan,1)],
                                 )
                             ],
                             return_statement=None,
                         ),
                     ),
                     (
-                        AST.LitTrue(True),
-                        AST.Block(
+                        AST.LitTrue(dummyspan,True),
+                        AST.Block(dummyspan,
                             statements=[
-                                AST.SetStatement(
-                                    var=[AST.Access(AST.Var("value"), None)],
-                                    value=[AST.LitInt(2)],
+                                AST.SetStatement(dummyspan,
+                                    var=[AST.Access(dummyspan,AST.Var(dummyspan,"value"), None)],
+                                    value=[AST.LitInt(dummyspan,2)],
                                 )
                             ],
                             return_statement=None,
                         ),
                     ),
                     (
-                        AST.LitTrue(True),
-                        AST.Block(
+                        AST.LitTrue(dummyspan,True),
+                        AST.Block(dummyspan,
                             statements=[
-                                AST.SetStatement(
-                                    var=[AST.Access(AST.Var("value"), None)],
-                                    value=[AST.LitInt(3)],
+                                AST.SetStatement(dummyspan,
+                                    var=[AST.Access(dummyspan,AST.Var(dummyspan,"value"), None)],
+                                    value=[AST.LitInt(dummyspan,3)],
                                 )
                             ],
                             return_statement=None,
@@ -1424,7 +1426,7 @@ def test_if_statement_executes_first_truthy_branch_only():
                 else_block=None,
             ),
         ],
-        return_statement=AST.Var("value"),
+        return_statement=AST.Var(dummyspan,"value"),
     )
 
     result, env = eval_file(ast_file)
@@ -1441,40 +1443,40 @@ def test_if_statement_executes_else_when_no_condition_matches():
     #     value = 4
     # end
     # return value
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=False,
-                var=[AST.Var("value")],
-                value=[AST.LitInt(0)],
+                var=[AST.Var(dummyspan,"value")],
+                value=[AST.LitInt(dummyspan,0)],
             ),
-            AST.IfStatement(
+            AST.IfStatement(dummyspan,
                 conditions=[
                     (
-                        AST.LitFalse(False),
-                        AST.Block(
+                        AST.LitFalse(dummyspan,False),
+                        AST.Block(dummyspan,
                             statements=[
-                                AST.SetStatement(
-                                    var=[AST.Access(AST.Var("value"), None)],
-                                    value=[AST.LitInt(1)],
+                                AST.SetStatement(dummyspan,
+                                    var=[AST.Access(dummyspan,AST.Var(dummyspan,"value"), None)],
+                                    value=[AST.LitInt(dummyspan,1)],
                                 )
                             ],
                             return_statement=None,
                         ),
                     )
                 ],
-                else_block=AST.Block(
+                else_block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
-                            var=[AST.Access(AST.Var("value"), None)],
-                            value=[AST.LitInt(4)],
+                        AST.SetStatement(dummyspan,
+                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"value"), None)],
+                            value=[AST.LitInt(dummyspan,4)],
                         )
                     ],
                     return_statement=None,
                 ),
             ),
         ],
-        return_statement=AST.Var("value"),
+        return_statement=AST.Var(dummyspan,"value"),
     )
 
     result, env = eval_file(ast_file)
@@ -1487,22 +1489,22 @@ def test_if_statement_executes_else_when_no_condition_matches():
 def test_unary_neg_rejects_non_numeric_values():
     # return -"x"
     with pytest.raises(AssertionError, match="attempt to perform arithmetic"):
-        eval_expr(AST.UnaryExpression(AST.UnExpType.NEG, AST.LitString("x")))
+        eval_expr(AST.UnaryExpression(dummyspan,AST.UnExpType.NEG, AST.LitString(dummyspan,"x")))
 
 
 def test_unary_size_rejects_non_table_values():
     # return #"x"
     with pytest.raises(AssertionError, match="attempt to get length"):
-        eval_expr(AST.UnaryExpression(AST.UnExpType.SIZE, AST.LitString("x")))
+        eval_expr(AST.UnaryExpression(dummyspan,AST.UnExpType.SIZE, AST.LitString(dummyspan,"x")))
 
 
 def test_function_call_rejects_non_function_source():
     # return 1()
     with pytest.raises(AssertionError, match="must be a function"):
         eval_expr(
-            AST.FunctionCall(
+            AST.FunctionCall(dummyspan,
                 method=False,
-                source=AST.LitInt(1),
+                source=AST.LitInt(dummyspan,1),
                 args=[],
             )
         )
@@ -1514,9 +1516,9 @@ def test_method_call_requires_access_source():
     # Method-call syntax should lower to an access source like obj:method().
     with pytest.raises(AssertionError, match="Expected function called with ':'"):
         eval_expr(
-            AST.FunctionCall(
+            AST.FunctionCall(dummyspan,
                 method=True,
-                source=AST.Var("f"),
+                source=AST.Var(dummyspan,"f"),
                 args=[],
             ),
             {"f": 1},
@@ -1552,119 +1554,119 @@ def test_complex_program_uses_functions_closures_methods_tables_loops_and_if():
     # end
     #
     # return account.status .. ":" .. account.balance
-    inc_method = AST.Lambda(
+    inc_method = AST.Lambda(dummyspan,
         parameters=["self", "amount"],
         extra=None,
-        block=AST.Block(
+        block=AST.Block(dummyspan,
             statements=[
-                AST.SetStatement(
+                AST.SetStatement(dummyspan,
                     var=[
-                        AST.Access(
-                            AST.Var("self"),
-                            AST.LitString("balance"),
+                        AST.Access(dummyspan,
+                            AST.Var(dummyspan,"self"),
+                            AST.LitString(dummyspan,"balance"),
                         )
                     ],
                     value=[
-                        AST.BinaryExpression(
+                        AST.BinaryExpression(dummyspan,
                             AST.BinExpType.ADD,
-                            AST.Access(AST.Var("self"), AST.LitString("balance")),
-                            AST.Var("amount"),
+                            AST.Access(dummyspan,AST.Var(dummyspan,"self"), AST.LitString(dummyspan,"balance")),
+                            AST.Var(dummyspan,"amount"),
                         )
                     ],
                 )
             ],
-            return_statement=AST.Access(AST.Var("self"), AST.LitString("balance")),
+            return_statement=AST.Access(dummyspan,AST.Var(dummyspan,"self"), AST.LitString(dummyspan,"balance")),
         ),
     )
-    ast_file = AST.Block(
+    ast_file = AST.Block(dummyspan,
         statements=[
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("make_counter")],
+                var=[AST.Var(dummyspan,"make_counter")],
                 value=[
-                    AST.Lambda(
+                    AST.Lambda(dummyspan,
                         parameters=["start"],
                         extra=None,
-                        block=AST.Block(
+                        block=AST.Block(dummyspan,
                             statements=[
-                                AST.Definition(
+                                AST.Definition(dummyspan,
                                     const=False,
-                                    var=[AST.Var("count")],
-                                    value=[AST.Var("start")],
+                                    var=[AST.Var(dummyspan,"count")],
+                                    value=[AST.Var(dummyspan,"start")],
                                 )
                             ],
-                            return_statement=AST.Lambda(
+                            return_statement=AST.Lambda(dummyspan,
                                 parameters=["step"],
                                 extra=None,
-                                block=AST.Block(
+                                block=AST.Block(dummyspan,
                                     statements=[
-                                        AST.SetStatement(
-                                            var=[AST.Access(AST.Var("count"), None)],
+                                        AST.SetStatement(dummyspan,
+                                            var=[AST.Access(dummyspan,AST.Var(dummyspan,"count"), None)],
                                             value=[
-                                                AST.BinaryExpression(
+                                                AST.BinaryExpression(dummyspan,
                                                     AST.BinExpType.ADD,
-                                                    AST.Var("count"),
-                                                    AST.Var("step"),
+                                                    AST.Var(dummyspan,"count"),
+                                                    AST.Var(dummyspan,"step"),
                                                 )
                                             ],
                                         )
                                     ],
-                                    return_statement=AST.Var("count"),
+                                    return_statement=AST.Var(dummyspan,"count"),
                                 ),
                             ),
                         ),
                     )
                 ],
             ),
-            AST.Definition(
+            AST.Definition(dummyspan,
                 const=True,
-                var=[AST.Var("account")],
+                var=[AST.Var(dummyspan,"account")],
                 value=[
-                    AST.LitTable(
+                    AST.LitTable(dummyspan,
                         [
-                            (AST.LitString("balance"), AST.LitInt(10)),
+                            (AST.LitString(dummyspan,"balance"), AST.LitInt(dummyspan,10)),
                             (
-                                AST.LitString("inc"),
-                                AST.FunctionCall(
+                                AST.LitString(dummyspan,"inc"),
+                                AST.FunctionCall(dummyspan,
                                     method=False,
-                                    source=AST.Var("make_counter"),
-                                    args=[AST.LitInt(0)],
+                                    source=AST.Var(dummyspan,"make_counter"),
+                                    args=[AST.LitInt(dummyspan,0)],
                                 ),
                             ),
-                            (AST.LitString("deposit"), inc_method),
+                            (AST.LitString(dummyspan,"deposit"), inc_method),
                         ]
                     )
                 ],
             ),
-            AST.ForLoop(
+            AST.ForLoop(dummyspan,
                 var="i",
-                start=AST.LitInt(1),
-                end=AST.LitInt(4),
-                step=AST.LitInt(1),
-                block=AST.Block(
+                start=AST.LitInt(dummyspan,1),
+                end=AST.LitInt(dummyspan,4),
+                step=AST.LitInt(dummyspan,1),
+                block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
+                        AST.SetStatement(dummyspan,
                             var=[
-                                AST.Access(
-                                    AST.Var("account"),
-                                    AST.LitString("balance"),
+                                AST.Access(dummyspan,
+                                    AST.Var(dummyspan,"account"),
+                                    AST.LitString(dummyspan,"balance"),
                                 )
                             ],
                             value=[
-                                AST.FunctionCall(
+                                AST.FunctionCall(dummyspan,
                                     method=True,
-                                    source=AST.Access(
-                                        AST.Var("account"),
-                                        AST.LitString("deposit"),
+                                    source=AST.Access(dummyspan,
+                                        AST.Var(dummyspan,"account"),
+                                        AST.LitString(dummyspan,"deposit"),
                                     ),
                                     args=[
-                                        AST.FunctionCall(
+                                        AST.FunctionCall(dummyspan,
                                             method=False,
-                                            source=AST.Access(
-                                                AST.Var("account"),
-                                                AST.LitString("inc"),
+                                            source=AST.Access(dummyspan,
+                                                AST.Var(dummyspan,"account"),
+                                                AST.LitString(dummyspan,"inc"),
                                             ),
-                                            args=[AST.Var("i")],
+                                            args=[AST.Var(dummyspan,"i")],
                                         )
                                     ],
                                 )
@@ -1674,54 +1676,54 @@ def test_complex_program_uses_functions_closures_methods_tables_loops_and_if():
                     return_statement=None,
                 ),
             ),
-            AST.IfStatement(
+            AST.IfStatement(dummyspan,
                 conditions=[
                     (
-                        AST.BinaryExpression(
+                        AST.BinaryExpression(dummyspan,
                             AST.BinExpType.GREATER,
-                            AST.Access(AST.Var("account"), AST.LitString("balance")),
-                            AST.LitInt(30),
+                            AST.Access(dummyspan,AST.Var(dummyspan,"account"), AST.LitString(dummyspan,"balance")),
+                            AST.LitInt(dummyspan,30),
                         ),
-                        AST.Block(
+                        AST.Block(dummyspan,
                             statements=[
-                                AST.SetStatement(
+                                AST.SetStatement(dummyspan,
                                     var=[
-                                        AST.Access(
-                                            AST.Var("account"),
-                                            AST.LitString("status"),
+                                        AST.Access(dummyspan,
+                                            AST.Var(dummyspan,"account"),
+                                            AST.LitString(dummyspan,"status"),
                                         )
                                     ],
-                                    value=[AST.LitString("high")],
+                                    value=[AST.LitString(dummyspan,"high")],
                                 )
                             ],
                             return_statement=None,
                         ),
                     )
                 ],
-                else_block=AST.Block(
+                else_block=AST.Block(dummyspan,
                     statements=[
-                        AST.SetStatement(
+                        AST.SetStatement(dummyspan,
                             var=[
-                                AST.Access(
-                                    AST.Var("account"),
-                                    AST.LitString("status"),
+                                AST.Access(dummyspan,
+                                    AST.Var(dummyspan,"account"),
+                                    AST.LitString(dummyspan,"status"),
                                 )
                             ],
-                            value=[AST.LitString("low")],
+                            value=[AST.LitString(dummyspan,"low")],
                         )
                     ],
                     return_statement=None,
                 ),
             ),
         ],
-        return_statement=AST.BinaryExpression(
+        return_statement=AST.BinaryExpression(dummyspan,
             AST.BinExpType.CONCAT,
-            AST.BinaryExpression(
+            AST.BinaryExpression(dummyspan,
                 AST.BinExpType.CONCAT,
-                AST.Access(AST.Var("account"), AST.LitString("status")),
-                AST.LitString(":"),
+                AST.Access(dummyspan,AST.Var(dummyspan,"account"), AST.LitString(dummyspan,"status")),
+                AST.LitString(dummyspan,":"),
             ),
-            AST.Access(AST.Var("account"), AST.LitString("balance")),
+            AST.Access(dummyspan,AST.Var(dummyspan,"account"), AST.LitString(dummyspan,"balance")),
         ),
     )
 
