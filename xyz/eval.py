@@ -24,7 +24,12 @@ def eval(string: str, env: XYZEnvironment | None = None) -> XYZType:
             return None
         else:
             interp = XYZInterpreter(env)
-            return interp.execute_ast(tree)
+            result = interp.execute_ast(tree)
+            if isinstance(result, Error):
+                result.print()
+                return None
+            else:
+                return result
 
 def debug(string: str, step: BuildStep = BuildStep.EXECUTE, env: XYZEnvironment | None = None):
     file = StringIO(string)
@@ -42,7 +47,11 @@ def debug(string: str, step: BuildStep = BuildStep.EXECUTE, env: XYZEnvironment 
             print(tree)
             return tree
         else:
-            interp = XYZInterpreter(env, True)
+            interp = XYZInterpreter(env, file, True)
             result = interp.execute_ast(tree)
-            print(result)
-            return result
+            if isinstance(result, Error):
+                result.print()
+                return None
+            else:
+                print(result)
+                return result

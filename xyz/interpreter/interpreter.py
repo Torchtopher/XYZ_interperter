@@ -1,8 +1,12 @@
 from types import FunctionType
 import xyz.parser.ast as AST
 import numbers
-from xyz.interpreter.types import XYZType, Scope, ensure_concat, ensure_int, ensure_num, ensure_table, ensure_func
+from xyz.error import Error
+from xyz.interpreter.types import XYZType, Scope, ensure_int, ensure_table, ensure_func, is_num, is_int, truthy, equals, can_concat, printable_type
+from xyz.interpreter.error import BinaryOperationTypeError
+from xyz.display import display
 from typing import NamedTuple, TypeAlias, assert_type
+from io import StringIO
 
 from xyz.interpreter.scoped_env import Scope
 from itertools import zip_longest
@@ -32,10 +36,12 @@ class ReturnValue(Exception):
 class XYZInterpreter:
 
     debug: bool
+    source_file: StringIO
 
-    def __init__(self, GVT: Scope|None = None, debug: bool = False):
+    def __init__(self, GVT: Scope|None = None, source_file: StringIO = StringIO(""), debug: bool = False):
         # global variable table
         self.GVT: Scope = Scope(None, "global") if not GVT else GVT
+        self.source_file = source_file
 
         # current variable table
         self.CVT: Scope = self.GVT
@@ -117,8 +123,7 @@ class XYZInterpreter:
             val = self.eval_expression(expr.right)
             match expr.type:
                 case AST.UnExpType.NOT:
-                    # allowed to take unary not of everything, just want to make sure its not None or False (our only "falsey" values)
-                    return val is None or val is False
+                    return not truthy(val)
 
                 case AST.UnExpType.NEG:
                     assert isinstance(val, int | float), f"attempt to perform arithmetic on a {type(val)} value"
@@ -135,54 +140,62 @@ class XYZInterpreter:
             match expr.type:
                 # ===== can only be performed with numbers (floats and ints) ========
                 case AST.BinExpType.ADD: # +
-                    return ensure_num(ee(expr.left)) + ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a + b, is_num, "+")
                 case AST.BinExpType.SUB: # -
-                    return ensure_num(ee(expr.left)) - ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a - b, is_num, "-")
                 case AST.BinExpType.MUL: # *
-                    return ensure_num(ee(expr.left)) * ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a * b, is_num, "*")
                 case AST.BinExpType.DIV: # /
-                    return ensure_num(ee(expr.left)) / ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a / b, is_num, "/")
                 case AST.BinExpType.FLOORDIV: # //
-                    return int(ensure_num(ee(expr.left)) // ensure_num(ee(expr.right)))
+                    return self.arith_helper(expr, lambda a, b: a // b, is_num, "//")
                 case AST.BinExpType.EXP: # **
-                    return ensure_num(ee(expr.left)) ** ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a ** b, is_num, "**")
                 case AST.BinExpType.MOD: # %
-                    return ensure_num(ee(expr.left)) % ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a % b, is_num, "%")
 
                 case AST.BinExpType.LESS:
-                    return ensure_num(ee(expr.left)) < ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a < b, is_num, "<")
                 case AST.BinExpType.LEQ:
-                    return ensure_num(ee(expr.left)) <= ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a <= b, is_num, "<=")
                 case AST.BinExpType.GREATER:
-                    return ensure_num(ee(expr.left)) > ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a > b, is_num, ">")
                 case AST.BinExpType.GEQ:
-                    return ensure_num(ee(expr.left)) >= ensure_num(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a >= b, is_num, ">=")
 
                 # ===== can only be perfomed with 2 ints ========
                 case AST.BinExpType.BIT_AND:
-                    return ensure_int(ee(expr.left)) & ensure_int(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a & b, is_int, "&")
                 case AST.BinExpType.BIT_XOR:
-                    return ensure_int(ee(expr.left)) ^ ensure_int(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a ^ b, is_int, "^")
                 case AST.BinExpType.BIT_OR:
-                    return ensure_int(ee(expr.left)) | ensure_int(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a | b, is_int, "|")
                 case AST.BinExpType.LSHIFT:
-                    return ensure_int(ee(expr.left)) << ensure_int(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a << b, is_int, "<<")
                 case AST.BinExpType.RSHIFT:
-                    return ensure_int(ee(expr.left)) >> ensure_int(ee(expr.right))
+                    return self.arith_helper(expr, lambda a, b: a >> b, is_int, ">>")
 
                 # all objects
                 case AST.BinExpType.EQUAL:
-                    return ee(expr.left) == ee(expr.right)
+                    return equals(self.eval_expression(expr.left), self.eval_expression(expr.right))
                 case AST.BinExpType.NEQ:
-                    return ee(expr.left) != ee(expr.right)
+                    return not equals(self.eval_expression(expr.left), self.eval_expression(expr.right))
                 case AST.BinExpType.AND:
-                    return ee(expr.left) and ee(expr.right)
+                    v1 = self.eval_expression(expr.left)
+                    if not truthy(v1):
+                        return v1
+                    else:
+                        return self.eval_expression(expr.right)
                 case AST.BinExpType.OR:
-                    return ee(expr.left) or ee(expr.right)
+                    v1 = self.eval_expression(expr.left)
+                    if truthy(v1):
+                        return v1
+                    else:
+                        return self.eval_expression(expr.right)
 
                 # works with strings and numbers only
                 case AST.BinExpType.CONCAT:
-                    return str(ensure_concat(ee(expr.left))) + str(ensure_concat(ee(expr.right)))
+                    return self.arith_helper(expr, lambda a, b: display(a) + display(b), can_concat, "..")
 
         elif isinstance(expr,  AST.Var):
             return self.CVT.get(expr.name)
@@ -193,8 +206,14 @@ class XYZInterpreter:
             index = self.eval_expression(expr.index)
             return ensure_table(container)[index] if index in ensure_table(container) else None
 
+    def arith_helper(self, exp: AST.BinaryExpression, op_function: FunctionType, check: FunctionType, op_str: str) -> XYZType:
+        v1 = self.eval_expression(exp.left)
+        v2 = self.eval_expression(exp.right)
+        if check(v1) and check(v2):
+            return op_function(v1, v2)
+        else:
+            raise BinaryOperationTypeError(exp.span, self.source_file, op_str, printable_type(v1) if not check(v1) else printable_type(v2))
 
-    # @TODO add line and character numebrs to the AST so we can give better error messages
     def exec_statement(self, stmnt: AST.Statement):
         if isinstance(stmnt, AST.Definition):
             if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
@@ -324,8 +343,10 @@ class XYZInterpreter:
         if ast.return_statement != None:
             raise ReturnValue(self.eval_expression(ast.return_statement))
 
-    def execute_ast(self, ast: AST.File) -> XYZType:
+    def execute_ast(self, ast: AST.File) -> XYZType | Error:
         try:
             self.execute_block(ast)
         except ReturnValue as r:
             return r.value
+        except Error as e:
+            return e
