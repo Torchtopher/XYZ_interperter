@@ -1,0 +1,60 @@
+-- brainfuck interpreter
+
+-- Hello, World!
+const program = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+
+const tape = {0}
+let pointer = 0
+let pc = 0
+
+function process_char(c)
+	if c == ">" then
+		pointer = pointer + 1
+		if tape[pointer] == nil then
+			tape[pointer] = 0
+		end
+	elseif c == "<" then
+		pointer = pointer - 1
+		if tape[pointer] == nil then
+			tape[pointer] = 0
+		end
+	elseif c == "+" then
+		tape[pointer] = (tape[pointer] + 1) % 256
+	elseif c == "-" then
+		tape[pointer] = (tape[pointer] - 1) % 256
+	elseif c == "." then
+		io.write(string.from_codepoint(tape[pointer]))
+	elseif c == "," then
+		tape[pointer] = string.to_codepoint(io.readchar())
+	elseif c == "[" then
+		let depth = 0
+		if tape[pointer] == 0 then
+			repeat
+				if string.char(program, pc) == "[" then
+					depth = depth + 1
+				elseif string.char(program, pc) == "]" then
+					depth = depth - 1
+				end
+				pc = pc + 1
+			until string.char(program, pc) == "]" and depth == 0
+		end
+	elseif c == "]" then
+		let depth = 0
+		if tape[pointer] != 0 then
+			pc = pc - 1
+			repeat
+				if string.char(program, pc) == "]" then
+					depth = depth + 1
+				elseif string.char(program, pc) == "[" then
+					depth = depth - 1
+				end
+				pc = pc - 1
+			until string.char(program, pc) == "[" and depth == 0
+		end
+	end
+end
+
+while pc < string.length(program) do
+	process_char(string.char(program, pc))
+	pc = pc + 1
+end

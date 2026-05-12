@@ -1,13 +1,13 @@
 const ll = import("linked_list.xyz").new()
 io.print("hello from XYZ!")
 for i = 0,10,1 do
-	ll:add(i)
+	ll:add(i*2)
 end
-io.print(ll)
+io.print(ll:size())
 io.print(ll:remove(9))
-io.print(ll)
+io.print(ll:size())
 
 if true then
-	return 0
+	return io.read()
 end
 return 1

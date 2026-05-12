@@ -1,4 +1,4 @@
-from sys import argv
+from sys import argv, stdin
 from os.path import isfile
 from enum import Enum
 
@@ -16,7 +16,16 @@ def xyz_import(name):
 
 ENV = XYZEnvironment({
     "io": {
-        "print": lambda *args: print(*args)
+        "read": lambda: input(),
+        "readchar": lambda: stdin.read(1),
+        "print": lambda *args: print(*args),
+        "write": lambda x: print(x, end='')
+    },
+    "string": {
+        "length": lambda x: len(str(x)),
+        "char": lambda x, i: x[i],
+        "from_codepoint": lambda c: chr(c),
+        "to_codepoint": lambda c: ord(c),
     },
     "import": xyz_import
 })
