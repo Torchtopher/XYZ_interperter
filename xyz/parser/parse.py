@@ -120,7 +120,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
 
     def parse_unary(tokens: TokenIterator) -> AST.Expression:
 
-        while (tokens.match([TT.OP_MINUS,
+        if (tokens.match([TT.OP_MINUS,
                              TT.OP_NOT,
                              TT.KEYWORD_NOT,
                              TT.OP_SIZE])):
@@ -174,8 +174,6 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         if (tokens.match(TT.KEYWORD_FUNCTION)):
             return parse_lambda(tokens)
 
-
-        # expected more than just ident but close enough
         raise NoGrammarMatchError(tokens.curr().span, source, "expression")
 
     def parse_prefixexp_actions(prefixexp: AST.Expression, tokens: TokenIterator) -> AST.Expression:
@@ -262,8 +260,6 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                 case TT.ELLIPSIS:
                     extra = tokens.expect(TT.IDENT, source).name
                     stop = True
-                case _:
-                    raise NoGrammarMatchError(t.span, source, "argument")
         tokens.expect(TT.PAREN_CLOSE, source)
         return AST.Lambda(args, extra, parse_block(TT.KEYWORD_END, tokens))
 
@@ -356,7 +352,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                     tokens.expect(until, source)
                     return AST.Block(statements, ret)
                 case _:
-                    tokens.back()
+                    start = tokens.back()
                     expr = parse_expression(tokens)
                     if isinstance(expr, AST.Var):
                         expr = AST.Access(expr, None)
@@ -365,11 +361,12 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                     elif isinstance(expr, AST.Access):
                         var: list[AST.Access] = [expr]
                         while tokens.match(TT.COMMA):
+                            start = tokens.curr()
                             next_var = parse_expression(tokens)
                             if isinstance(next_var, AST.Var):
                                 next_var = AST.Access(next_var, None)
                             if not isinstance(next_var, AST.Access):
-                                raise NoGrammarMatchError(tokens.prev().span, source, "variable or indexed expression")
+                                raise NoGrammarMatchError((start.span[0], tokens.prev().span[1]), source, "variable or indexed expression")
                             var.append(next_var)
                         tokens.expect(TT.SET, source)
                         value: list[AST.Expression] = [parse_expression(tokens)]
@@ -377,7 +374,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                             value.append(parse_expression(tokens))
                         statements.append(AST.SetStatement(var, value))
                     else:
-                        raise NoGrammarMatchError(tokens.prev().span, source, "assignment or function call")
+                        raise NoGrammarMatchError((start.span[0], tokens.prev().span[1]), source, "statement")
         return AST.Block(statements, None)
 
     try:

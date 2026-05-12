@@ -199,9 +199,7 @@ def tokenize_string(file, line, col, char) -> Token | Error:
                 skipwhite = False
             elif nextchar == "\n":
                 old_lc = (end_line, end_col-1)
-                end_line += 1
-                end_col = 1
-                return StringNewlineError((old_lc, (end_line, end_col)), file)
+                return StringNewlineError((old_lc, (end_line + 1, 2)), file)
 
         elif escape:
             escape = False
@@ -234,13 +232,13 @@ def tokenize_string(file, line, col, char) -> Token | Error:
                     skipwhite = True
                 # todo?: \xXX, \ddd, \u{XXX}
                 case _:
-                    return InvalidEscapeError(((end_line, end_col-2), (end_line, end_col-1)), file, nextchar)
+                    return InvalidEscapeError(((end_line, end_col-2), (end_line, end_col)), file, nextchar)
         elif nextchar == char:
             break
         elif nextchar == '\\':
             escape = True
         elif nextchar == '\n':
-            return StringNewlineError(((end_line, end_col-1), (end_line + 1, 1)), file)
+            return StringNewlineError(((end_line, end_col-1), (end_line + 1, 2)), file)
         else:
             final += nextchar
     return Token(TokenType.STRING, ((line, col), (end_line, end_col)), final)

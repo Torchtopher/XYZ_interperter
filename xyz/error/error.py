@@ -32,10 +32,10 @@ class Error(Exception):
         print(self.message())
         print()
         lines: list[str] = self.text.splitlines()
-        for i in range(self.span[0][0]-1, self.span[1][0]):
+        for i in range(self.span[0][0]-1, min(len(lines), self.span[1][0])):
             line: str = lines[i]
             start: int = self.span[0][1]-1 if i == self.span[0][0]-1 else 0
-            end: int = self.span[1][1] if i == self.span[1][0]-1 else len(line)
+            end: int = self.span[1][1]-1 if i == self.span[1][0]-1 else len(line)
             printed: str = ""
             under: str = ""
             for c in range(len(line)):
@@ -46,4 +46,6 @@ class Error(Exception):
                     line[c] if line[c].isspace() else " ")
             print(style((NORMAL, GRAY), str(i+1)), printed)
             print(" "*len(str(i+1)), under)
+        if self.span[1][0] > len(lines):
+            print(style((NORMAL, RED), "<EOF>"))
         print("-"*32)

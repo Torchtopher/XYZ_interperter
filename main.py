@@ -44,7 +44,7 @@ def main():
     else:
         with open(argv[1], "r") as file:
             if DEBUG:
-                debug(file.read(), BuildStep.TOKENIZE, ENV)
+                debug(file.read(), BuildStep.PARSE, ENV)
             else:
                 print(display(eval(file.read(), ENV)))
 
