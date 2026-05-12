@@ -29,9 +29,9 @@ class TokenIterator:
         return self.data[self.index]
 
     # gives previous, does not move
-    def prev(self):
-        assert self.index != 0, "tried to call previous when nothing is before, almost ceratinly a bug?"
-        return self.data[self.index-1]
+    def prev(self, n = 1):
+        assert self.index >= n, "tried to call previous when nothing is before, almost ceratinly a bug?"
+        return self.data[self.index-n]
 
     # gives previous, moves back one
     def back(self):

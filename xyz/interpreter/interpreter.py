@@ -7,35 +7,6 @@ from typing import NamedTuple, TypeAlias, assert_type
 from xyz.interpreter.scoped_env import Scope
 from itertools import zip_longest
 
-TEST_AST: AST.File = AST.Block(
-      statements=[
-          AST.Definition(
-              const=False,
-              var=[AST.Var("a")],
-              value=[AST.LitInt(1)],
-          ),
-          AST.SetStatement(
-              var=[AST.Access(AST.Var("a"), None)],
-              value=[AST.LitInt(2)],
-          ),
-      ],
-      return_statement=AST.Var("a"),
-  )
-
-# TEST_AST: AST.File = AST.Block(
-#       statements=[],
-#       return_statement=AST.Access(
-#           AST.Access(
-#               AST.Var("a"),
-#               AST.Access(
-#                   AST.Var("fx_result"),
-#                   AST.LitString("c"),
-#               ),
-#           ),
-#           AST.LitString("b"),
-#       ),
-#   )
-
 # a[f(x).c].b
 # access(acesss("a", acesss(f(x), "c")) , "b")
 
