@@ -327,7 +327,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                 case TT.KEYWORD_FOR:
                     ident = tokens.expect(TT.IDENT, source)
                     assert isinstance(ident.name, str)
-                    tokens.expect(TT.SET, source)
+                    tokens.expect(TT.KEYWORD_IN, source)
                     start = parse_expression(tokens)
                     tokens.expect(TT.COMMA, source)
                     end = parse_expression(tokens)

@@ -1,6 +1,6 @@
 const ll = import("linked_list.xyz").new()
 io.print("hello from XYZ!")
-for i = 0,10,1 do
+for i in 0,10,1 do
 	ll:add(i*2)
 end
 io.print(ll:size())

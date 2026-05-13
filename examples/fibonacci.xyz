@@ -1,6 +1,6 @@
 function fib(n)
 	const sequence = {}
-	for i = 0,n,1 do
+	for i in 0,n,1 do
 		if i < 2 then
 			sequence[i] = 1
 		else
@@ -11,7 +11,7 @@ function fib(n)
 end
 function pretty_print_list(l)
 	io.print("{")
-	for i = 0,#l,1 do
+	for i in 0,#l,1 do
 		io.print("\t" .. l[i] .. ",")
 	end
 	io.print("}")
