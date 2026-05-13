@@ -253,12 +253,11 @@ class XYZInterpreter:
 
             old_cvt = self.CVT
 
-            self.CVT = Scope(self.CVT, "for loop")
-            self.CVT.define(stmnt.var, start, stmnt.span, self.source_file)
 
             try:
                 for i in range(start, end, step):
-                    self.CVT.update(stmnt.var, i, stmnt.span, self.source_file)
+                    self.CVT = Scope(self.CVT, "for loop")
+                    self.CVT.define(stmnt.var, i, stmnt.span, self.source_file)
                     try:
                         self.execute_block(stmnt.block)
                     except BreakSignal:
@@ -285,9 +284,9 @@ class XYZInterpreter:
         elif isinstance(stmnt, AST.WhileLoop):
             old_cvt = self.CVT
 
-            self.CVT = Scope(self.CVT, "While loop")
             try:
                 while (truthy(self.eval_expression(stmnt.condition))):
+                    self.CVT = Scope(self.CVT, "While loop")
                     try:
                         self.execute_block(stmnt.block)
                     except BreakSignal:
@@ -298,9 +297,9 @@ class XYZInterpreter:
         elif isinstance(stmnt, AST.RepeatLoop):
             old_cvt = self.CVT
 
-            self.CVT = Scope(self.CVT, "Repeat loop")
             try:
                 while True:
+                    self.CVT = Scope(self.CVT, "Repeat loop")
                     try:
                         self.execute_block(stmnt.block)
                     except BreakSignal:
