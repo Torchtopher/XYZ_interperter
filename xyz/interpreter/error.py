@@ -1,6 +1,6 @@
 from xyz.error import Error
 
-class BinaryOperationTypeError(Error):
+class OperationTypeError(Error):
     op: str
     bad_type: str
 

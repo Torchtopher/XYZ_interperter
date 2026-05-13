@@ -3,7 +3,7 @@ import xyz.parser.ast as AST
 import numbers
 from xyz.error import Error, Span
 from xyz.interpreter.types import XYZType, Scope, is_num, is_int, truthy, equals, can_concat, printable_type
-from xyz.interpreter.error import BinaryOperationTypeError, LoopRangeError, CallSourceError, IndexSourceError
+from xyz.interpreter.error import OperationTypeError, LoopRangeError, CallSourceError, IndexSourceError
 from xyz.display import display
 from typing import NamedTuple, TypeAlias, assert_type
 from io import StringIO
@@ -113,7 +113,6 @@ class XYZInterpreter:
                 else:
                     raise CallSourceError(expr.span, self.source_file, printable_type(source))
 
-            assert type(func) == FunctionType, f"Trying to call something that is not a function {expr.source}"
             for arg in expr.args:
                 args.append(self.eval_expression(arg))
 
@@ -130,12 +129,16 @@ class XYZInterpreter:
                     return not truthy(val)
 
                 case AST.UnExpType.NEG:
-                    assert isinstance(val, int | float), f"attempt to perform arithmetic on a {type(val)} value"
-                    return -val
+                    if isinstance(val, int | float) and not isinstance(val, bool):
+                        return -val
+                    else:
+                        raise OperationTypeError(expr.span, self.source_file, "-", printable_type(val))
 
                 case AST.UnExpType.SIZE:
-                    assert isinstance(val, dict), f"attempt to get length of a {type(val)} value"
-                    return len(val)
+                    if isinstance(val, dict):
+                        return len(val)
+                    else:
+                        raise OperationTypeError(expr.span, self.source_file, "#", printable_type(val))
 
         elif isinstance(expr, AST.BinaryExpression):
 
@@ -214,7 +217,7 @@ class XYZInterpreter:
         if check(v1) and check(v2):
             return op_function(v1, v2)
         else:
-            raise BinaryOperationTypeError(exp.span, self.source_file, op_str, printable_type(v1) if not check(v1) else printable_type(v2))
+            raise OperationTypeError(exp.span, self.source_file, op_str, printable_type(v1) if not check(v1) else printable_type(v2))
 
     def exec_statement(self, stmnt: AST.Statement):
         if isinstance(stmnt, AST.Definition):
