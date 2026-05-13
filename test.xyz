@@ -1,5 +1,0 @@
-while true do
-	const input = io.read()
-	if input == '' then break
-	else io.print(input) end
-end

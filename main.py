@@ -1,13 +1,12 @@
 from sys import argv, stdin
 from os.path import isfile
+import os
 from enum import Enum
 
 from xyz import eval, XYZEnvironment, display
 from xyz.eval import debug, BuildStep
 
 import pytest # would be sad to have known failing tests
-
-DEBUG = True
 
 # demo import function
 def xyz_import(name):
@@ -35,6 +34,7 @@ def run_tests():
     assert retcode == 0, "Tests failed! see output"
 
 def main():
+    DEBUG = os.environ.get("XYZ_DEBUG", "0") != "0"
     if DEBUG: run_tests()
 
     if len(argv) < 2:
