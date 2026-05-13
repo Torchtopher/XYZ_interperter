@@ -5,6 +5,7 @@ from xyz.tokenizer import tokenize
 from xyz.parser import parse, TokenIterator
 from xyz.interpreter import XYZInterpreter, XYZType
 from xyz.env import XYZEnvironment
+from xyz.display import display
 
 class BuildStep(Enum):
     TOKENIZE = 0
@@ -53,5 +54,5 @@ def debug(string: str, step: BuildStep = BuildStep.EXECUTE, env: XYZEnvironment 
                 result.print()
                 return None
             else:
-                print(result)
+                print(display(result))
                 return result

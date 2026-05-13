@@ -65,3 +65,7 @@ class ConstAssignError(Error):
 
     def message(self) -> str:
         return "Cannot assign to constant variable %s" % self.name
+
+class MismatchedAssignError(Error):
+    def message(self) -> str:
+        return "Mismatched variable and value lists"

@@ -39,10 +39,6 @@ class Scope:
 
         self.table[name] = Variable(val, const)
 
-    # intended for supplying an environment, should not be run by XYZ code
-    def external_define(self, name: str, val):
-        self.table[name] = Variable(val, True)
-
     def update(self, name: str, val, span, source):
         res = self.resolve_var(name)
         if res is None:
@@ -50,3 +46,14 @@ class Scope:
         if res.const:
             raise ConstAssignError(span, source, name)
         res.value = val
+
+    # intended for external interaction (i.e. supplying an environment), should not be run by XYZ code
+    def external_define(self, name: str, val, const=True):
+        self.table[name] = Variable(val, const)
+
+    def external_get(self, name: str):
+        res = self.resolve_var(name)
+        if res is None:
+            raise RuntimeError("Cannot access unbound variable %s" % name)
+        else:
+            return res.value

@@ -1,3 +1,4 @@
+from xyz.interpreter.error import OperationTypeError, CallSourceError, UnboundVariableError, ConstAssignError, MismatchedAssignError
 import pytest
 
 import xyz.parser.ast as AST
@@ -11,7 +12,7 @@ dummyspan = ((0,0),(0,0))
 def scope(values: dict | None = None) -> Scope:
     env = Scope(None, "test")
     for name, value in (values or {}).items():
-        env.define(name, value)
+        env.external_define(name, value, False)
     return env
 
 
@@ -262,7 +263,7 @@ def test_definition_creates_let_variable():
 
     env = exec_stmt(statement)
 
-    assert env.get("a") == 10
+    assert env.external_get("a") == 10
     assert env.resolve_var("a").const is False
 
 
@@ -276,7 +277,7 @@ def test_definition_creates_const_variable():
 
     env = exec_stmt(statement)
 
-    assert env.get("a") == 10
+    assert env.external_get("a") == 10
     assert env.resolve_var("a").const is True
 
 
@@ -299,7 +300,7 @@ def test_set_statement_replaces_existing_variable():
         [AST.LitInt(dummyspan,20)],
     )
 
-    assert exec_stmt(statement, {"a": 10}).get("a") == 20
+    assert exec_stmt(statement, {"a": 10}).external_get("a") == 20
 
 
 def test_set_statement_evaluates_value_expression_before_assignment():
@@ -316,7 +317,7 @@ def test_set_statement_evaluates_value_expression_before_assignment():
         ],
     )
 
-    assert exec_stmt(statement, {"a": 0}).get("a") == 5
+    assert exec_stmt(statement, {"a": 0}).external_get("a") == 5
 
 
 def test_set_statement_assigns_into_existing_table():
@@ -427,7 +428,7 @@ def test_set_statement_rejects_unbound_variable_assignment():
         [AST.LitInt(dummyspan,1)],
     )
 
-    with pytest.raises(RuntimeError, match="unbound variable"):
+    with pytest.raises(UnboundVariableError):
         exec_stmt(statement)
 
 
@@ -435,13 +436,13 @@ def test_set_statement_rejects_const_variable_reassignment():
     # const a = 1
     # a = 2
     env = scope()
-    env.define("a", 1, const=True)
+    env.external_define("a", 1)
     statement = AST.SetStatement(dummyspan,
         [AST.Access(dummyspan,AST.Var(dummyspan,"a"), None)],
         [AST.LitInt(dummyspan,2)],
     )
 
-    with pytest.raises(RuntimeError, match="const variable"):
+    with pytest.raises(ConstAssignError):
         exec_stmt(statement, env)
 
 
@@ -449,7 +450,7 @@ def test_set_statement_can_mutate_table_stored_in_const_variable():
     # const a = {"b": 1}
     # a.b = 2
     env = scope()
-    env.define("a", {"b": 1}, const=True)
+    env.external_define("a", {"b": 1})
     statement = AST.SetStatement(dummyspan,
         [AST.Access(dummyspan,AST.Var(dummyspan,"a"), AST.LitString(dummyspan,"b"))],
         [AST.LitInt(dummyspan,2)],
@@ -468,7 +469,7 @@ def test_set_statement_rejects_mismatched_target_and_value_counts():
         [AST.LitInt(dummyspan,1)],
     )
 
-    with pytest.raises(RuntimeError, match="same number"):
+    with pytest.raises(MismatchedAssignError):
         exec_stmt(statement)
 
 
@@ -480,7 +481,7 @@ def test_definition_rejects_mismatched_target_and_value_counts():
         value=[AST.LitInt(dummyspan,1)],
     )
 
-    with pytest.raises(RuntimeError, match="same number"):
+    with pytest.raises(MismatchedAssignError):
         exec_stmt(statement)
 
 
@@ -560,8 +561,7 @@ def test_for_loop_variable_is_not_visible_after_loop():
         return_statement=AST.Var(dummyspan,"i"),
     )
 
-    with pytest.raises(RuntimeError, match="unbound variable"):
-        eval_file(ast_file)
+    assert isinstance(eval_file(ast_file)[0], UnboundVariableError)
 
 
 def test_for_loop_does_not_run_body_when_range_is_empty():
@@ -969,7 +969,7 @@ def test_function_closure_can_update_outer_variable():
     result, env = eval_file(ast_file)
 
     assert result == 3
-    assert env.get("count") == 2
+    assert env.external_get("count") == 2
 
 
 def test_function_closure_returned_from_function_keeps_captured_scope():
@@ -1171,7 +1171,7 @@ def test_function_call_statement_runs_for_side_effects_and_ignores_return_value(
     result, env = eval_file(ast_file)
 
     assert result == 1
-    assert env.get("count") == 1
+    assert env.external_get("count") == 1
 
 
 def test_block_statement_uses_inner_scope_and_can_update_outer_variable():
@@ -1217,7 +1217,7 @@ def test_block_statement_uses_inner_scope_and_can_update_outer_variable():
     assert result == 11
     assert scope_values(env) == {"outer": 11}
     with pytest.raises(RuntimeError, match="unbound variable"):
-        env.get("inner")
+        env.external_get("inner")
 
 
 def test_while_loop_runs_until_condition_is_false():
@@ -1488,19 +1488,19 @@ def test_if_statement_executes_else_when_no_condition_matches():
 
 def test_unary_neg_rejects_non_numeric_values():
     # return -"x"
-    with pytest.raises(AssertionError, match="attempt to perform arithmetic"):
+    with pytest.raises(OperationTypeError):
         eval_expr(AST.UnaryExpression(dummyspan,AST.UnExpType.NEG, AST.LitString(dummyspan,"x")))
 
 
 def test_unary_size_rejects_non_table_values():
     # return #"x"
-    with pytest.raises(AssertionError, match="attempt to get length"):
+    with pytest.raises(OperationTypeError):
         eval_expr(AST.UnaryExpression(dummyspan,AST.UnExpType.SIZE, AST.LitString(dummyspan,"x")))
 
 
 def test_function_call_rejects_non_function_source():
     # return 1()
-    with pytest.raises(AssertionError, match="must be a function"):
+    with pytest.raises(CallSourceError):
         eval_expr(
             AST.FunctionCall(dummyspan,
                 method=False,
@@ -1730,5 +1730,5 @@ def test_complex_program_uses_functions_closures_methods_tables_loops_and_if():
     result, env = eval_file(ast_file)
 
     assert result == "low:20"
-    assert env.get("account")["balance"] == 20
-    assert env.get("account")["status"] == "low"
+    assert env.external_get("account")["balance"] == 20
+    assert env.external_get("account")["status"] == "low"

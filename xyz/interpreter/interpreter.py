@@ -3,7 +3,7 @@ import xyz.parser.ast as AST
 import numbers
 from xyz.error import Error, Span
 from xyz.interpreter.types import XYZType, Scope, is_num, is_int, truthy, equals, can_concat, printable_type
-from xyz.interpreter.error import OperationTypeError, LoopRangeError, CallSourceError, IndexSourceError
+from xyz.interpreter.error import OperationTypeError, LoopRangeError, CallSourceError, IndexSourceError, MismatchedAssignError
 from xyz.display import display
 from typing import NamedTuple, TypeAlias, assert_type
 from io import StringIO
@@ -221,13 +221,13 @@ class XYZInterpreter:
 
     def exec_statement(self, stmnt: AST.Statement):
         if isinstance(stmnt, AST.Definition):
-            if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
+            if len(stmnt.var) != len(stmnt.value): raise MismatchedAssignError(stmnt.span, self.source_file)
             for var, expr in zip(stmnt.var, stmnt.value, strict=True):
                 val = self.eval_expression(expr)
                 self.CVT.define(var.name, val, stmnt.span, self.source_file, stmnt.const)
 
         elif isinstance(stmnt, AST.SetStatement):
-            if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
+            if len(stmnt.var) != len(stmnt.value): raise MismatchedAssignError(stmnt.span, self.source_file)
             var: AST.Access
             expr: AST.Expression
             for var, expr in zip(stmnt.var, stmnt.value, strict=True):
