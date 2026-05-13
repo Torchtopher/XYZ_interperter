@@ -6,8 +6,6 @@ from enum import Enum
 from xyz import eval, XYZEnvironment, display
 from xyz.eval import debug, BuildStep
 
-import pytest # would be sad to have known failing tests
-
 # demo import function
 def xyz_import(name):
     with open("examples/"+name, "r") as file:
@@ -29,13 +27,8 @@ ENV = XYZEnvironment({
     "import": xyz_import
 })
 
-def run_tests():
-    retcode = pytest.main(["tests/"])
-    assert retcode == 0, "Tests failed! see output"
-
 def main():
     DEBUG = os.environ.get("XYZ_DEBUG", "0") != "0"
-    if DEBUG: run_tests()
 
     if len(argv) < 2:
         print("No XYZ source file provided!")

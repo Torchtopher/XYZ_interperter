@@ -1,12 +1,21 @@
 # Simple XYZ interpreter
 
-Interprets a provided XYZ script, providing some standard libraries.
+An interpreter for XYZ, a Lua-like embeddable scripting language.
 
-# Simple Running Guide
-```uv sync``` - creates venv with needed pkgs
+`main.py` runs a provided file while providing some basic functions to the program.
 
-```uv run ty check``` - runs the type checker
+## Usage
 
-```uv run pytest -v``` - runs the tests to make sure things parse as expected
+`uv run main.py <file>`
+(Or one of the `xyzrun` wrappers, depending on platform)
 
-```uv run main.py examples/parse_test.xyz``` - runs end to end on ```parse_test.xyz```
+Setting the environment variable `XYZ_DEBUG` to anything other than `0` prints debug information,
+including the return value of a file.
+
+## Development
+
+`uv sync` - install dev dependencies
+
+`uv run ty check` - runs the type checker
+
+`uv run pytest -v` - runs the tests to make sure things parse as expected

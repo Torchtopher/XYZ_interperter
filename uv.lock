@@ -91,17 +91,17 @@ wheels = [
 name = "xyz"
 version = "0.1.0"
 source = { virtual = "." }
-dependencies = [
-    { name = "pytest" },
-]
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest" },
     { name = "ty" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pytest", specifier = ">=9.0.3" }]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ty", specifier = ">=0.0.33" }]
+dev = [
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "ty", specifier = ">=0.0.33" },
+]
