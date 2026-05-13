@@ -1,9 +1,9 @@
 from types import FunctionType
 import xyz.parser.ast as AST
 import numbers
-from xyz.error import Error
-from xyz.interpreter.types import XYZType, Scope, ensure_int, ensure_table, ensure_func, is_num, is_int, truthy, equals, can_concat, printable_type
-from xyz.interpreter.error import BinaryOperationTypeError
+from xyz.error import Error, Span
+from xyz.interpreter.types import XYZType, Scope, is_num, is_int, truthy, equals, can_concat, printable_type
+from xyz.interpreter.error import BinaryOperationTypeError, LoopRangeError, CallSourceError, IndexSourceError
 from xyz.display import display
 from typing import NamedTuple, TypeAlias, assert_type
 from io import StringIO
@@ -51,7 +51,7 @@ class XYZInterpreter:
     # mimics lua in the following ways
     # if len(args) < len(paramaters), fills the rest of the params with None
     # if len(args) > len(parameters), remaining args are ignored, unless there is ...something
-    def xyz_function(self, params: list[str], extra: str | None, block: AST.Block, scope: Scope, name: str):
+    def xyz_function(self, params: list[str], extra: str | None, block: AST.Block, scope: Scope, name: str, span: Span):
         def call(*args: list[XYZType]) -> XYZType:
             old_cvt = self.CVT
 
@@ -60,7 +60,7 @@ class XYZInterpreter:
                 for var, val in zip_longest(params, args):
                     if var is None:
                         break
-                    self.CVT.define(var, val)
+                    self.CVT.define(var, val, span, self.source_file)
 
                 # want to bind all the rest of the variables to whatever extra is
                 if extra:
@@ -69,7 +69,7 @@ class XYZInterpreter:
                     for i in range(len(val_list)):
                         val_dict[i] = val_list[i]
 
-                    self.CVT.define(extra, val_dict)
+                    self.CVT.define(extra, val_dict, span, self.source_file)
 
                 self.execute_block(block)
                 return None
@@ -107,7 +107,11 @@ class XYZInterpreter:
                 args.append(accessor_res.table) # table that holds the function we are about to call
                 func: FunctionType = accessor_res.table[accessor_res.key] # type: ignore # genuinely the best i could do
             else:
-                func: FunctionType = ensure_func(self.eval_expression(expr.source))
+                source: XYZType = self.eval_expression(expr.source)
+                if isinstance(source, FunctionType):
+                    func: FunctionType = source
+                else:
+                    raise CallSourceError(expr.span, self.source_file, printable_type(source))
 
             assert type(func) == FunctionType, f"Trying to call something that is not a function {expr.source}"
             for arg in expr.args:
@@ -116,7 +120,7 @@ class XYZInterpreter:
             return func(*args)
 
         elif isinstance(expr, AST.Lambda):
-            return self.xyz_function(expr.parameters, expr.extra, expr.block, self.CVT, "lambda")
+            return self.xyz_function(expr.parameters, expr.extra, expr.block, self.CVT, "lambda", expr.span)
 
 
         elif isinstance(expr, AST.UnaryExpression):
@@ -135,8 +139,6 @@ class XYZInterpreter:
 
         elif isinstance(expr, AST.BinaryExpression):
 
-            ee = self.eval_expression
-            
             match expr.type:
                 # ===== can only be performed with numbers (floats and ints) ========
                 case AST.BinExpType.ADD: # +
@@ -198,13 +200,13 @@ class XYZInterpreter:
                     return self.arith_helper(expr, lambda a, b: display(a) + display(b), can_concat, "..")
 
         elif isinstance(expr,  AST.Var):
-            return self.CVT.get(expr.name)
+            return self.CVT.get(expr.name, expr.span, self.source_file)
 
         elif isinstance(expr, AST.Access):
-            container = self.eval_expression(expr.source)
-            if expr.index == None: return container
+            if expr.index == None: return self.eval_expression(expr.source)
             index = self.eval_expression(expr.index)
-            return ensure_table(container)[index] if index in ensure_table(container) else None
+            container = self.ensure_index_source(expr)
+            return container[index] if index in container else None
 
     def arith_helper(self, exp: AST.BinaryExpression, op_function: FunctionType, check: FunctionType, op_str: str) -> XYZType:
         v1 = self.eval_expression(exp.left)
@@ -219,7 +221,7 @@ class XYZInterpreter:
             if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
             for var, expr in zip(stmnt.var, stmnt.value, strict=True):
                 val = self.eval_expression(expr)
-                self.CVT.define(var.name, val, stmnt.const)
+                self.CVT.define(var.name, val, stmnt.span, self.source_file, stmnt.const)
 
         elif isinstance(stmnt, AST.SetStatement):
             if len(stmnt.var) != len(stmnt.value): raise RuntimeError("Must have same number of variables and expressions to assign")
@@ -233,7 +235,7 @@ class XYZInterpreter:
                 if isinstance(access.table, Scope):
                     # need to repect const
                     assert isinstance(access.key, str)
-                    access.table.update(access.key, val)
+                    access.table.update(access.key, val, stmnt.span, self.source_file)
 
                 # this case is for something like
                 # a.b = 2, since eval(a) is a dict with like {"b": 42}
@@ -242,20 +244,20 @@ class XYZInterpreter:
                     access.table[access.key] = val
 
         elif isinstance(stmnt, AST.ForLoop):
-            start = self.eval_expression(stmnt.start)
-            end = self.eval_expression(stmnt.end)
-            step = self.eval_expression(stmnt.step)
+            start = self.check_loop_range(stmnt.start)
+            end = self.check_loop_range(stmnt.end)
+            step = self.check_loop_range(stmnt.step)
 
             old_cvt = self.CVT
 
             self.CVT = Scope(self.CVT, "for loop")
-            self.CVT.define(stmnt.var, start)
+            self.CVT.define(stmnt.var, start, stmnt.span, self.source_file)
 
             try:
-                for i in range(ensure_int(start), ensure_int(end), ensure_int(step)):
-                    self.CVT.update(stmnt.var, i)
+                for i in range(start, end, step):
+                    self.CVT.update(stmnt.var, i, stmnt.span, self.source_file)
                     try:
-                        self.execute_ast(stmnt.block)
+                        self.execute_block(stmnt.block)
                     except BreakSignal:
                         break
             finally:
@@ -323,6 +325,20 @@ class XYZInterpreter:
             finally:
                 self.CVT = old_cvt
 
+    def check_loop_range(self, expr: AST.Expression) -> int:
+        value = self.eval_expression(expr)
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise LoopRangeError(expr.span, self.source_file)
+        else:
+            return value
+
+    def ensure_index_source(self, expr: AST.Access) -> dict:
+        val = self.eval_expression(expr.source)
+        if not isinstance(val, dict):
+            raise IndexSourceError(expr.span, self.source_file, printable_type(val))
+        else:
+            return val
+
     # basically the same as evaulating an expression, but this time give back the container and key
     # so the caller can set the value themseleves
     def find_accessor(self, access_expr: AST.Access) -> AccessorResult:
@@ -330,10 +346,9 @@ class XYZInterpreter:
             assert isinstance(access_expr.source, AST.Var), "with no index, the expression to be set must be a variable"
             return AccessorResult(self.CVT, access_expr.source.name)
 
-        container = self.eval_expression(access_expr.source)
         key = self.eval_expression(access_expr.index)
 
-        return AccessorResult(ensure_table(container), key)
+        return AccessorResult(self.ensure_index_source(access_expr), key)
 
 
     def execute_block(self, ast: AST.Block):

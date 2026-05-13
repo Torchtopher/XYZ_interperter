@@ -25,16 +25,8 @@ def truthy(var: XYZType) -> bool:
 def equals(a: XYZType, b: XYZType) -> bool:
     return type(a) == type(b) and a == b
 
-def ensure_num(var: XYZType) -> int | float:
-    assert isinstance(var, int | float), f"{var} must be a number, is {type(var)}"
-    return var
-
 def ensure_int(var: XYZType) -> int:
     assert isinstance(var, int), f"{var} must be an integer, is {type(var)}"
-    return var
-
-def ensure_concat(var: XYZType) -> int | float | str:
-    assert isinstance(var, int | float | str), f"{var} must be a number or string, is {type(var)}"
     return var
 
 def ensure_table(var: XYZType) -> dict:

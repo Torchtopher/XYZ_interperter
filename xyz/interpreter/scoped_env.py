@@ -1,3 +1,4 @@
+from xyz.interpreter.error import UnboundVariableError, VariableRedefinitionError, ConstAssignError
 
 class Variable:
 
@@ -16,36 +17,36 @@ class Scope:
 
     def __repr__(self):
         return f"Scope {self.name} with table {self.table} and parent {self.parent}"
-    
+
     def resolve_var(self, name):
         if name in self.table:
             return self.table[name]
-        
+
         if self.parent is not None:
             return self.parent.resolve_var(name)
 
         return None
-    
-    def get(self, name):
+
+    def get(self, name, span, source):
         res = self.resolve_var(name)
         if res is None:
-            raise RuntimeError(f"Trying to access unbound variable: {name}")
+            raise UnboundVariableError(span, source, name)
         return res.value
 
-    def define(self, name: str, val, const=False):
+    def define(self, name: str, val, span, source, const=False):
         if name in self.table:
-            raise RuntimeError(f"Can not redefine variable with name: {name}")
+            raise VariableRedefinitionError(span, source, name)
 
         self.table[name] = Variable(val, const)
 
-    def update(self, name: str, val):
+    # intended for supplying an environment, should not be run by XYZ code
+    def external_define(self, name: str, val):
+        self.table[name] = Variable(val, True)
+
+    def update(self, name: str, val, span, source):
         res = self.resolve_var(name)
         if res is None:
-            raise RuntimeError(f"Trying to set unbound variable: {name}")
-        
+            raise UnboundVariableError(span, source, name)
         if res.const:
-            raise RuntimeError(f"Trying to update const variable {name}")
+            raise ConstAssignError(span, source, name)
         res.value = val
-        
-
-            

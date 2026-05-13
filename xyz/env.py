@@ -5,4 +5,4 @@ class XYZEnvironment(Scope):
     def __init__(self, userdata: dict[str, XYZType] = {}):
         Scope.__init__(self, None, "global")
         for k in userdata.keys():
-            self.define(k, userdata[k], True)
+            self.external_define(k, userdata[k])
