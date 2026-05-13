@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from sys import argv, stdin
 from os.path import isfile
 import os

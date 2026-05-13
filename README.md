@@ -4,10 +4,13 @@ An interpreter for XYZ, a Lua-like embeddable scripting language.
 
 `main.py` runs a provided file while providing some basic functions to the program.
 
+## Dependencies
+
+- Python 3
+
 ## Usage
 
-`uv run main.py <file>`
-(Or one of the `xyzrun` wrappers, depending on platform)
+`./main.py <file>`
 
 Setting the environment variable `XYZ_DEBUG` to anything other than `0` prints debug information,
 including the return value of a file.
