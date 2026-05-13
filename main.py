@@ -46,7 +46,7 @@ def main():
             if DEBUG:
                 debug(file.read(), BuildStep.EXECUTE, ENV)
             else:
-                print(display(eval(file.read(), ENV)))
+                eval(file.read(), ENV)
 
 
 if __name__ == "__main__":
