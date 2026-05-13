@@ -251,19 +251,16 @@ class XYZInterpreter:
             end = self.check_loop_range(stmnt.end)
             step = self.check_loop_range(stmnt.step)
 
-            old_cvt = self.CVT
-
-
-            try:
-                for i in range(start, end, step):
-                    self.CVT = Scope(self.CVT, "for loop")
-                    self.CVT.define(stmnt.var, i, stmnt.span, self.source_file)
-                    try:
-                        self.execute_block(stmnt.block)
-                    except BreakSignal:
-                        break
-            finally:
-                self.CVT = old_cvt
+            for i in range(start, end, step):
+                old_cvt = self.CVT
+                self.CVT = Scope(self.CVT, "for loop")
+                self.CVT.define(stmnt.var, i, stmnt.span, self.source_file)
+                try:
+                    self.execute_block(stmnt.block)
+                except BreakSignal:
+                    break
+                finally:
+                    self.CVT = old_cvt
 
         elif isinstance(stmnt, AST.FunctionCall):
             # want to just call the function for side effects
@@ -282,32 +279,28 @@ class XYZInterpreter:
                 self.CVT = old_cvt
 
         elif isinstance(stmnt, AST.WhileLoop):
-            old_cvt = self.CVT
-
-            try:
-                while (truthy(self.eval_expression(stmnt.condition))):
-                    self.CVT = Scope(self.CVT, "While loop")
-                    try:
-                        self.execute_block(stmnt.block)
-                    except BreakSignal:
-                        break
-            finally:
-                self.CVT = old_cvt
+            while (truthy(self.eval_expression(stmnt.condition))):
+                old_cvt = self.CVT
+                self.CVT = Scope(self.CVT, "While loop")
+                try:
+                    self.execute_block(stmnt.block)
+                except BreakSignal:
+                    break
+                finally:
+                    self.CVT = old_cvt
 
         elif isinstance(stmnt, AST.RepeatLoop):
-            old_cvt = self.CVT
+            while True:
+                old_cvt = self.CVT
+                self.CVT = Scope(self.CVT, "Repeat loop")
+                try:
+                    self.execute_block(stmnt.block)
+                except BreakSignal:
+                    break
+                finally:
+                    self.CVT = old_cvt
 
-            try:
-                while True:
-                    self.CVT = Scope(self.CVT, "Repeat loop")
-                    try:
-                        self.execute_block(stmnt.block)
-                    except BreakSignal:
-                        break
-
-                    if truthy(self.eval_expression(stmnt.condition)): break
-            finally:
-                self.CVT = old_cvt
+                if truthy(self.eval_expression(stmnt.condition)): break
 
         elif isinstance(stmnt, AST.IfStatement):
             old_cvt = self.CVT
