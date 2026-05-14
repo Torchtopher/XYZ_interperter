@@ -3,14 +3,17 @@ from sys import argv, stdin
 from os.path import isfile
 import os
 from enum import Enum
+from pathlib import Path
 
 from xyz import eval, XYZEnvironment, display
 from xyz.eval import debug, BuildStep
 
+current_dir: Path = Path(".")
+DEBUG = os.environ.get("XYZ_DEBUG", "0") != "0"
+
 # demo import function
-def xyz_import(name):
-    with open("examples/"+name, "r") as file:
-        return eval(file.read(), ENV)
+def xyz_import(name: str):
+    return run_file(Path(name))
 
 ENV = XYZEnvironment({
     "io": {
@@ -29,19 +32,27 @@ ENV = XYZEnvironment({
 })
 
 def main():
-    DEBUG = os.environ.get("XYZ_DEBUG", "0") != "0"
 
     if len(argv) < 2:
         print("No XYZ source file provided!")
-    elif not isfile(argv[1]):
-        print("File %s does not exist!" % argv[1])
     else:
-        with open(argv[1], "r") as file:
-            if DEBUG:
-                debug(file.read(), BuildStep.EXECUTE, ENV)
-            else:
-                eval(file.read(), ENV)
+        run_file(Path(argv[1]))
 
+def run_file(path: Path):
+    global current_dir
+    original: Path = current_dir
+    current_dir = current_dir.joinpath(path.parent)
+    current_file = current_dir.joinpath(path.name)
+    if not isfile(current_file):
+        print("File %s does not exist" % current_file)
+    else:
+        with open(current_file, "r") as file:
+            if DEBUG:
+                result = debug(file.read(), BuildStep.EXECUTE, ENV)
+            else:
+                result = eval(file.read(), ENV)
+    current_dir = original
+    return result
 
 if __name__ == "__main__":
     main()
