@@ -84,7 +84,7 @@ def tokenize(file) -> list[Token] | Error:
                 case '-':
                     if peek(file) == '-':
                         # handle comments
-                        while file.read(1) != "\n":
+                        while file.read(1) not in ["\n", ""]:
                             pass
                         line += 1
                         col = 1
