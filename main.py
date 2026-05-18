@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# public API ("libxyz") in xyz module.
+# this file is only for demonstration.
+
 from sys import argv, stdin
 from os.path import isfile
 import os
@@ -11,8 +15,9 @@ from xyz.eval import debug, BuildStep
 current_dir: Path = Path(".")
 DEBUG = os.environ.get("XYZ_DEBUG", "0") != "0"
 
-# demo import function
 def xyz_import(name: str):
+    # since everything is synchronous, we can just store the
+    # currently running file in current_dir and use this for relative imports.
     return run_file(Path(name))
 
 ENV = XYZEnvironment({
@@ -32,7 +37,6 @@ ENV = XYZEnvironment({
 })
 
 def main():
-
     if len(argv) < 2:
         print("No XYZ source file provided!")
     else:

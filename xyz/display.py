@@ -3,6 +3,12 @@ from xyz.interpreter.types import XYZType
 from re import match
 
 def display(value: XYZType, quote_strings: bool = False) -> str:
+    """Returns a string representation of the provided XYZ value.
+    
+    Args:
+      value: An XYZ value to display.
+      quote_strings: Whether string values should be quoted, used to display tables.
+    """
     if value == None: return "nil"
     if isinstance(value, int | float) and not isinstance(value, bool): return str(value)
     if value == True: return "true"
