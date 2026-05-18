@@ -1,3 +1,7 @@
+"""
+Defines types for XYZ tokens.
+"""
+
 from enum import Enum
 from xyz.error import Span
 from typing import NamedTuple
@@ -91,6 +95,20 @@ keywords: dict[str, TokenType] = {
 }
 
 class Token(NamedTuple):
+    """
+    Represents a single token discovered by the tokenizer.
+
+    Attributes:
+      type:
+        The type of token this object represents.
+      span:
+        The corresponding span in the file where this token was read.
+      name:
+        The value of the token.
+        For identifiers, the identifier name.
+        For strings, the value of the string.
+        For all other tokens, None.
+    """
     type: TokenType
     span: Span
     name: str | None

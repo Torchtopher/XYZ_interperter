@@ -1,3 +1,7 @@
+"""
+The main process of the tokenizer.
+"""
+
 from xyz.tokenizer.tokens import Token, TokenType, keywords
 from xyz.error import Error, Span
 from xyz.tokenizer.error import (
@@ -6,7 +10,7 @@ from xyz.tokenizer.error import (
 from types import GeneratorType
 
 
-def peek(file) -> str:
+def __peek(file) -> str:
     pos: int = file.tell()
     nextchar: str = file.read(1)
     file.seek(pos)
@@ -14,11 +18,14 @@ def peek(file) -> str:
 
 
 def tokenize(file) -> list[Token] | Error:
+    """
+    Tokenizes a string of XYZ code, returning a list of tokens or an error.
+    """
     tokens: list[Token] = []
     line: int = 1
     col: int = 1
 
-    def span(width: int) -> Span:
+    def span(width: int) -> Span: # span helper
         return ((line, col), (line, col+width))
 
     def tokenize_iter(file) -> GeneratorType[Token | Error]:
@@ -37,16 +44,16 @@ def tokenize(file) -> list[Token] | Error:
                     else:
                         col += 1
                 case _ if char.isalpha() or char == "_":
-                    yield tokenize_ident(file, line, col, char)
+                    yield __tokenize_ident(file, line, col, char)
                 case _ if char.isdecimal():
-                    yield tokenize_number(file, line, col, char)
+                    yield __tokenize_number(file, line, col, char)
                 case '.':
-                    nextchar: str = peek(file)
+                    nextchar: str = __peek(file)
                     if nextchar.isdecimal():
-                        yield tokenize_number(file, line, col, char)
+                        yield __tokenize_number(file, line, col, char)
                     elif nextchar == '.':
                         file.read(1)
-                        if peek(file) == '.':
+                        if __peek(file) == '.':
                             file.read(1)
                             yield Token(TokenType.ELLIPSIS, span(3), None)
                         else:
@@ -54,13 +61,13 @@ def tokenize(file) -> list[Token] | Error:
                     else:
                         yield Token(TokenType.DOT, span(1), None)
                 case "'" | '"':
-                    yield tokenize_string(file, line, col, char)
+                    yield __tokenize_string(file, line, col, char)
                 case ';':
                     yield Token(TokenType.SEMICOLON, span(1), None)
                 case ',':
                     yield Token(TokenType.COMMA, span(1), None)
                 case '=':
-                    if peek(file) == '=':
+                    if __peek(file) == '=':
                         file.read(1)
                         yield Token(TokenType.OP_EQUAL, span(2), None)
                     else:
@@ -82,7 +89,7 @@ def tokenize(file) -> list[Token] | Error:
                 case '+':
                     yield Token(TokenType.OP_PLUS, span(1), None)
                 case '-':
-                    if peek(file) == '-':
+                    if __peek(file) == '-':
                         # handle comments
                         while file.read(1) not in ["\n", ""]:
                             pass
@@ -91,13 +98,13 @@ def tokenize(file) -> list[Token] | Error:
                     else:
                         yield Token(TokenType.OP_MINUS, span(1), None)
                 case '*':
-                    if peek(file) == '*':
+                    if __peek(file) == '*':
                         file.read(1)
                         yield Token(TokenType.OP_EXP, span(2), None)
                     else:
                         yield Token(TokenType.OP_MUL, span(1), None)
                 case '/':
-                    if peek(file) == '/':
+                    if __peek(file) == '/':
                         file.read(1)
                         yield Token(TokenType.OP_FLOORDIV, span(2), None)
                     else:
@@ -111,7 +118,7 @@ def tokenize(file) -> list[Token] | Error:
                 case '|':
                     yield Token(TokenType.OP_OR, span(1), None)
                 case '<':
-                    nextchar: str = peek(file)
+                    nextchar: str = __peek(file)
                     if nextchar == '<':
                         file.read(1)
                         yield Token(TokenType.OP_LSHIFT, span(2), None)
@@ -121,7 +128,7 @@ def tokenize(file) -> list[Token] | Error:
                     else:
                         yield Token(TokenType.OP_LESS, span(1), None)
                 case '>':
-                    nextchar: str = peek(file)
+                    nextchar: str = __peek(file)
                     if nextchar == '>':
                         file.read(1)
                         yield Token(TokenType.OP_RSHIFT, span(2), None)
@@ -133,7 +140,7 @@ def tokenize(file) -> list[Token] | Error:
                 case '#':
                     yield Token(TokenType.OP_SIZE, span(1), None)
                 case '!':
-                    if peek(file) == '=':
+                    if __peek(file) == '=':
                         file.read(1)
                         yield Token(TokenType.OP_NEQ, span(2), None)
                     else:
@@ -149,11 +156,11 @@ def tokenize(file) -> list[Token] | Error:
     return tokens
 
 
-def tokenize_ident(file, line, col, char) -> Token:
+def __tokenize_ident(file, line, col, char) -> Token:
     ident: str = char
     end: int = col + 1
     while True:
-        nextchar: str = peek(file)
+        nextchar: str = __peek(file)
         if nextchar.isalnum() or nextchar == "_":
             ident += file.read(1)
             end += 1
@@ -165,12 +172,12 @@ def tokenize_ident(file, line, col, char) -> Token:
         return Token(TokenType.IDENT, ((line, col), (line, end)), ident)
 
 
-def tokenize_number(file, line, col, char) -> Token:
+def __tokenize_number(file, line, col, char) -> Token:
     frac: bool = char == '.'
     final: str = char
     end: int = col + 1
     while True:
-        nextchar: str = peek(file)
+        nextchar: str = __peek(file)
         if not frac and nextchar == '.':
             frac = True
             final += file.read(1)
@@ -183,7 +190,7 @@ def tokenize_number(file, line, col, char) -> Token:
     return Token(TokenType.FLOAT if frac else TokenType.INT, ((line, col), (line, end)), final)
 
 
-def tokenize_string(file, line, col, char) -> Token | Error:
+def __tokenize_string(file, line, col, char) -> Token | Error:
     final: str = ""
     escape: bool = False
     end_line: int = line
@@ -230,7 +237,7 @@ def tokenize_string(file, line, col, char) -> Token | Error:
                     final += "'"
                 case 'z':
                     skipwhite = True
-                # todo?: \xXX, \ddd, \u{XXX}
+                # not yet implemented from lua: \xXX, \ddd, \u{XXX}
                 case _:
                     return InvalidEscapeError(((end_line, end_col-2), (end_line, end_col)), file, nextchar)
         elif nextchar == char:
