@@ -1,3 +1,7 @@
+"""
+Defines an XYZEnvironment.
+"""
+
 from xyz.interpreter.scoped_env import Scope
 from xyz.interpreter.types import XYZType
 

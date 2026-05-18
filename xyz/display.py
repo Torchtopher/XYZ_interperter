@@ -1,3 +1,7 @@
+"""
+Deals with string representations of XYZ values.
+"""
+
 from types import FunctionType
 from xyz.interpreter.types import XYZType
 from re import match
@@ -15,9 +19,9 @@ def display(value: XYZType, quote_strings: bool = False) -> str:
     if value == False: return "false"
     if isinstance(value, str): return f'"{value}"' if quote_strings else value
     if isinstance(value, FunctionType): return "<function>"
-    if isinstance(value, dict): return display_table(value)
+    if isinstance(value, dict): return __display_table(value)
 
-def display_table(table: dict) -> str:
+def __display_table(table: dict) -> str:
     out = "{ "
     index = 0
     broken_sequence = False

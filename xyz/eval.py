@@ -1,3 +1,7 @@
+"""
+Entry module for running XYZ code.
+"""
+
 from enum import Enum
 from io import StringIO
 from xyz.error import Error
