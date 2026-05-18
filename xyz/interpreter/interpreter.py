@@ -266,11 +266,11 @@ class XYZInterpreter:
             if len(stmnt.var) != len(stmnt.value): raise MismatchedAssignError(stmnt.span, self.source_file)
             var: AST.Access
             expr: AST.Expression
+            # evalute all expressions on RHS first so a, b = b, a works like expected
             vals = [self.eval_expression(x) for x in stmnt.value]
 
             for var, val in zip(stmnt.var, vals, strict=True):
                 access: AccessorResult = self.__find_accessor(var)
-                #val = self.eval_expression(expr)
 
                 # this means that we are doing assignment to something like
                 # a = 1
