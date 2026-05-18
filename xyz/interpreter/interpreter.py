@@ -266,9 +266,12 @@ class XYZInterpreter:
             if len(stmnt.var) != len(stmnt.value): raise MismatchedAssignError(stmnt.span, self.source_file)
             var: AST.Access
             expr: AST.Expression
-            for var, expr in zip(stmnt.var, stmnt.value, strict=True):
+            vals = [self.eval_expression(x) for x in stmnt.value]
+
+            for var, val in zip(stmnt.var, vals, strict=True):
                 access: AccessorResult = self.__find_accessor(var)
-                val = self.eval_expression(expr)
+                #val = self.eval_expression(expr)
+
                 # this means that we are doing assignment to something like
                 # a = 1
                 if isinstance(access.table, Scope):

@@ -1,17 +1,43 @@
-let a = true
-let num = 3
-let num2 = 5
-
+-- Arithmetic operators work with integers and floats.
+-- The result is an integer when both values are integers, otherwise it is a float.
 io.print(3 + 5) -- 8
-io.print(3 - 5.0) -- -2.0, converts to float
+io.print(3 - 5.0) -- -2.0
 io.print(3 * 5) -- 15
 io.print(5 / 3) -- 1.66666667
 io.print(5 // 3) -- 1
-io.print(3 ** 5) -- 3^5=243
+io.print(2 ** 3 ** 2) -- 3^5=243
 io.print(5 % 3) -- 2
 
+io.print(3 < 5) -- true
+io.print(3 <= 3) -- true
+io.print(5 > 3) -- true
+io.print(5 >= 5.0) -- true
+
+-- The string concatenation operator works with integers, floats, and strings.
 let str = "hello "
 let str1 = "world"
 io.print(str .. str1) -- hello world
+io.print("score: " .. 10 .. ", average: " .. 9.5) -- score: 10, average: 9.5
 
-if (true or )
+-- Only nil and false are falsey; all other values are truthy.
+io.print(3 == 3) -- true
+io.print("cat" != "dog") -- true
+io.print(nil or "fallback") -- fallback
+io.print("value" and true) -- true
+
+if (true or num()) then
+    io.print("short circuiting works")
+end
+
+if (false and num()) then 
+    io.print("this does not run")
+else
+    io.print("and short circuiting works")
+end
+
+-- Bitwise operators work with integers and return integers.
+io.print(6 & 3) -- 2
+io.print(6 ^ 3) -- 5
+io.print(6 | 3) -- 7
+io.print(3 << 2) -- 12
+io.print(8 >> 1) -- 4
