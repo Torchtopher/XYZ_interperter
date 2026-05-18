@@ -1,3 +1,7 @@
+"""
+The main logic of the interpreter.
+"""
+
 from types import FunctionType
 import xyz.parser.ast as AST
 import numbers
@@ -24,7 +28,16 @@ class ReturnValue(Exception):
 
 
 class XYZInterpreter:
-    
+    """
+    An instance of the XYZ interpreter.
+
+    Attributes:
+      debug:
+        Whether the interpreter is in debug mode, in which case it will print some undefined debug text.
+      source_file:
+        The source file as StringIO for error reporting.
+    """
+
     debug: bool
     source_file: StringIO
 
@@ -117,7 +130,7 @@ class XYZInterpreter:
                 accessor_res: AccessorResult = self.__find_accessor(expr.source)
                 assert isinstance(accessor_res.table, dict)
                 args.append(accessor_res.table) # table that holds the function we are about to call
-                func: FunctionType = accessor_res.table[accessor_res.key] # type: ignore # genuinely the best i could do
+                func: FunctionType = accessor_res.table[accessor_res.key] # type: ignore
             else:
                 source: XYZType = self.eval_expression(expr.source)
                 if isinstance(source, FunctionType):
@@ -358,7 +371,7 @@ class XYZInterpreter:
             return val
 
     # basically the same as evaulating an expression, but this time give back the container and key
-    # so the caller can set the value themseleves
+    # so the caller can set the value themselves
     def __find_accessor(self, access_expr: AST.Access) -> AccessorResult:
         if access_expr.index is None:
             assert isinstance(access_expr.source, AST.Var), "with no index, the expression to be set must be a variable"

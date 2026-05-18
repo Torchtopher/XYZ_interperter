@@ -1,3 +1,7 @@
+"""
+A scope where XYZ variables are stored.
+"""
+
 from xyz.interpreter.error import UnboundVariableError, VariableRedefinitionError, ConstAssignError
 
 class Variable:
@@ -8,7 +12,7 @@ class Variable:
 
 
 class Scope:
-    """A wrapper around a dictonary . Uses the parent Scope for variables 
+    """A wrapper around a dictionary. Uses the parent Scope for variables not found in this one.
     """
 
     def __init__(self, parent, name: str):
@@ -100,9 +104,17 @@ class Scope:
 
     # intended for external interaction (i.e. supplying an environment), should not be run by XYZ code
     def external_define(self, name: str, val, const=True):
+        """
+        Defines a variable with a value without checking if it exists (so it can't throw an error).
+        Should only be run by external code, for example to add an external global variable.
+        """
         self.table[name] = Variable(val, const)
 
     def external_get(self, name: str):
+        """
+        Gets the value of a variable, throwing a Python RuntimeError if it doesn't exist instead of an XYZ error.
+        Should only be run by external code.
+        """
         res = self.resolve_var(name)
         if res is None:
             raise RuntimeError("Cannot access unbound variable %s" % name)
