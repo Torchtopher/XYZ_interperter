@@ -1,3 +1,6 @@
+"""
+A utility for iterating over tokens.
+"""
 
 from xyz.tokenizer import Token, TokenType
 from xyz.parser.error import WrongTokenError

@@ -1,3 +1,7 @@
+"""
+The main logic of the parser.
+"""
+
 from io import StringIO
 from typing import Callable
 from xyz.parser.error import WrongTokenError, NoGrammarMatchError
@@ -5,9 +9,6 @@ from xyz.tokenizer import TokenType as TT
 import xyz.parser.ast as AST
 from xyz.error import Error
 from xyz.parser.token_iterator import TokenIterator
-
-# For simplicity, the parser uses the python Exception system instead of an error-as-value system.
-# These are converted back to errors-as-values at the top of the parser call stack.
 
 BINARY_TOKENS_TO_AST = {TT.OP_MINUS: AST.BinExpType.SUB, 
                         TT.OP_PLUS: AST.BinExpType.ADD,
@@ -38,6 +39,15 @@ UNARY_TOKENS_TO_AST = {TT.OP_SIZE: AST.UnExpType.SIZE,
                        }
 
 def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
+    """
+    Parses a token stream into an AST.
+    
+    Args:
+      source:
+        A source file as StringIO, for error reporting.
+      tokens:
+        A TokenIterator from the list of tokens given by the tokenizer.
+    """
 
     # ---
 
@@ -61,7 +71,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
     def parse_expression(tokens: TokenIterator) -> AST.Expression:
         return parse_or(tokens)
 
-    # helper function for repetitve binary ops
+    # helper function for repetitive binary ops
     def parse_general_binary_op(
         tokens: TokenIterator,
         operators: list[TT],
@@ -139,14 +149,17 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
     def parse_primary(tokens: TokenIterator) -> AST.Expression: 
         if (tokens.match(TT.INT)):
             t = tokens.prev()
+            assert isinstance(t.name, str)
             return AST.LitInt(t.span, int(t.name))
       
         if (tokens.match(TT.FLOAT)):
             t = tokens.prev()
+            assert isinstance(t.name, str)
             return AST.LitFloat(t.span, float(t.name))
 
         if (tokens.match(TT.STRING)):
             t = tokens.prev()
+            assert isinstance(t.name, str)
             return AST.LitString(t.span, t.name)
 
         if (tokens.match(TT.KEYWORD_TRUE)):
@@ -160,6 +173,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         
         if (tokens.match(TT.IDENT)):
             t = tokens.prev()
+            assert isinstance(t.name, str)
             return parse_prefixexp_actions(AST.Var(t.span, t.name), tokens)
         
         if (tokens.match(TT.PAREN_OPEN)):
@@ -178,6 +192,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
         raise NoGrammarMatchError(tokens.curr().span, source, "expression")
 
     def parse_prefixexp_actions(prefixexp: AST.Expression, tokens: TokenIterator) -> AST.Expression:
+        # after a variable name, function call, or grouped expression (a "prefixexp"), more calls and accessors can be chained.
         final = prefixexp
         while (tokens.match([TT.DOT, TT.BRACKET_OPEN, TT.COLON, TT.PAREN_OPEN])):
             t = tokens.prev()
@@ -214,7 +229,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
     def parse_table(tokens: TokenIterator) -> AST.LitTable:
         start = tokens.prev().span[0]
         fields: list[tuple[AST.Expression, AST.Expression]] = []
-        index = 0
+        index = 0 # important difference from lua: keyless values will be auto-indexed starting at *0*.
         stop: bool = False
         while not stop:
             t = tokens.next()
@@ -226,6 +241,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
                     tokens.expect(TT.SET, source)
                     fields.append((key, parse_expression(tokens)))
                 case TT.IDENT:
+                    assert isinstance(t.name, str)
                     if (tokens.curr().type == TT.SET):
                         tokens.expect(TT.SET, source)
                         key = AST.LitString(t.span, t.name)
@@ -257,6 +273,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
             t = tokens.prev()
             match (t.type):
                 case TT.IDENT:
+                    assert isinstance(t.name, str)
                     args.append(t.name)
                     if not tokens.match(TT.COMMA):
                         stop = True
@@ -282,7 +299,6 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
             value.append(parse_expression(tokens))
         return AST.Definition((start, tokens.prev().span[1]), const, var, value)
 
-    # todo! statements
     def parse_block(until: TT | list[TT], tokens: TokenIterator) -> AST.Block:
         start_pos = tokens.curr().span[0]
         statements: list[AST.Statement] = []
@@ -290,7 +306,7 @@ def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
             t = tokens.next()
             match (t.type):
                 case TT.SEMICOLON:
-                    pass
+                    pass # noop
                 case TT.KEYWORD_LET:
                     statements.append(parse_definition(tokens, False))
                 case TT.KEYWORD_CONST:
