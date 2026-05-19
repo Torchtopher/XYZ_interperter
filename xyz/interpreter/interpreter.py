@@ -264,8 +264,9 @@ class XYZInterpreter:
         
         if isinstance(stmnt, AST.Definition):
             if len(stmnt.var) != len(stmnt.value): raise MismatchedAssignError(stmnt.span, self.source_file)
-            for var, expr in zip(stmnt.var, stmnt.value, strict=True):
-                val = self.eval_expression(expr)
+            
+            vals = [self.eval_expression(x) for x in stmnt.value]
+            for var, val in zip(stmnt.var, vals, strict=True):
                 self.CVT.define(var.name, val, stmnt.span, self.source_file, stmnt.const)
 
         elif isinstance(stmnt, AST.SetStatement):

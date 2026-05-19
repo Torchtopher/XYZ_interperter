@@ -28,7 +28,7 @@ def tokenize(file) -> list[Token] | Error:
     def span(width: int) -> Span: # span helper
         return ((line, col), (line, col+width))
 
-    def tokenize_iter(file) -> GeneratorType[Token | Error]:
+    def tokenize_iter(file): # type: ignore
         nonlocal line, col
 
         while True:
