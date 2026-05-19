@@ -1,8 +1,9 @@
+from io import StringIO
 import pytest
 
 from xyz.eval import debug, BuildStep
 from xyz.parser import AST
-from xyz.error import Span
+from xyz.error import Span, XYZSource
 
 def var(span: Span, name: str):
     return AST.Var(span, name)
@@ -41,7 +42,7 @@ def span(s, e) -> Span:
     ],
 )
 def test_primary_expressions(program, expected):
-    assert debug("return "+program, BuildStep.PARSE).return_statement == expected
+    assert debug(XYZSource(StringIO("return "+program), "<test>"), BuildStep.PARSE).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -59,7 +60,7 @@ def test_primary_expressions(program, expected):
     ],
 )
 def test_unary_expressions(program, expected):
-    assert debug("return "+program, BuildStep.PARSE).return_statement == expected
+    assert debug(XYZSource(StringIO("return "+program), "<test>"), BuildStep.PARSE).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -89,7 +90,7 @@ def test_unary_expressions(program, expected):
     ],
 )
 def test_binary_operators(program, expected):
-    assert debug("return "+program, BuildStep.PARSE).return_statement == expected
+    assert debug(XYZSource(StringIO("return "+program), "<test>"), BuildStep.PARSE).return_statement == expected
 
 
 @pytest.mark.parametrize(
@@ -292,4 +293,4 @@ def test_binary_operators(program, expected):
     ],
 )
 def test_compound_expressions(program, expected):
-    assert debug("return "+program, BuildStep.PARSE).return_statement == expected
+    assert debug(XYZSource(StringIO("return "+program), "<test>"), BuildStep.PARSE).return_statement == expected

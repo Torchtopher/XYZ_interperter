@@ -1,10 +1,10 @@
 """
 A utility for iterating over tokens.
 """
+from xyz.error.source import XYZSource
 
 from xyz.tokenizer import Token, TokenType
 from xyz.parser.error import WrongTokenError
-from io import StringIO
 
 
 class TokenIterator:
@@ -107,12 +107,12 @@ class TokenIterator:
         
         return False
     
-    def expect(self, token_type: TokenType | list[TokenType], source: StringIO) -> Token:
+    def expect(self, token_type: TokenType | list[TokenType], source: XYZSource) -> Token:
         """Checks that token at the current index is correct. DOES increment index by 1 if so.
 
         Args:
             token_type (TokenType | list[TokenType]): The type or list of acceptable token types.
-            source (StringIO): The source file, needed for errors
+            source (XYZSource): The source file, needed for errors
 
         Raises:
             WrongTokenError: When the token type does not match `token_type`

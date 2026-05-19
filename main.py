@@ -3,6 +3,7 @@
 # public API ("libxyz") in xyz module.
 # this file is only for demonstration.
 
+from io import StringIO
 from sys import argv, stdin
 from os.path import isfile
 import os
@@ -11,6 +12,7 @@ from pathlib import Path
 
 from xyz import eval, XYZEnvironment, display
 from xyz.eval import debug, BuildStep
+from xyz.error import XYZSource
 
 current_dir: Path = Path(".")
 DEBUG = os.environ.get("XYZ_DEBUG", "0") != "0"
@@ -51,10 +53,11 @@ def run_file(path: Path):
         print("File %s does not exist" % current_file)
     else:
         with open(current_file, "r") as file:
+            source = XYZSource(StringIO(file.read()), current_file.name)
             if DEBUG:
-                result = debug(file.read(), BuildStep.EXECUTE, ENV)
+                result = debug(source, BuildStep.EXECUTE, ENV)
             else:
-                result = eval(file.read(), ENV)
+                result = eval(source, ENV)
     current_dir = original
     return result
 

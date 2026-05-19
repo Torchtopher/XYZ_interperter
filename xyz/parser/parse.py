@@ -2,12 +2,11 @@
 The main logic of the parser.
 """
 
-from io import StringIO
 from typing import Callable
 from xyz.parser.error import WrongTokenError, NoGrammarMatchError
 from xyz.tokenizer import TokenType as TT
 import xyz.parser.ast as AST
-from xyz.error import Error
+from xyz.error import Error, XYZSource
 from xyz.parser.token_iterator import TokenIterator
 
 BINARY_TOKENS_TO_AST = {TT.OP_MINUS: AST.BinExpType.SUB, 
@@ -38,13 +37,13 @@ UNARY_TOKENS_TO_AST = {TT.OP_SIZE: AST.UnExpType.SIZE,
                        TT.OP_MINUS: AST.UnExpType.NEG,
                        }
 
-def parse(source: StringIO, tokens: TokenIterator) -> AST.File | Error:
+def parse(source: XYZSource, tokens: TokenIterator) -> AST.File | Error:
     """
     Parses a token stream into an AST.
     
     Args:
       source:
-        A source file as StringIO, for error reporting.
+        An XYZSource, for error reporting.
       tokens:
         A TokenIterator from the list of tokens given by the tokenizer.
     """

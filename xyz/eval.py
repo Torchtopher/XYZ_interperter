@@ -4,7 +4,7 @@ Entry module for running XYZ code.
 
 from enum import Enum
 from io import StringIO
-from xyz.error import Error
+from xyz.error import Error, XYZSource
 from xyz.tokenizer import tokenize
 from xyz.parser import parse, TokenIterator
 from xyz.interpreter import XYZInterpreter, XYZType
@@ -23,19 +23,18 @@ class BuildStep(Enum):
     EXECUTE = 2
     """After executing; returning the script's return value"""
 
-def eval(string: str, env: XYZEnvironment | None = None) -> XYZType:
+def eval(file: XYZSource, env: XYZEnvironment | None = None) -> XYZType:
     """Evaluates a given XYZ file.
 
     Args:
       string:
-        The XYZ string to evaluate, interpreted as a file.
+        The XYZ source to evaluate
       env:
         An optional XYZEnvironment, to provide external values to the global scope.
 
     Returns:
       The return value of the file.
     """
-    file = StringIO(string)
     tokens = tokenize(file)
     if isinstance(tokens, Error):
         tokens.print()
@@ -54,16 +53,15 @@ def eval(string: str, env: XYZEnvironment | None = None) -> XYZType:
             else:
                 return result
 
-def debug(string: str, step: BuildStep = BuildStep.EXECUTE, env: XYZEnvironment | None = None):
+def debug(file: XYZSource, step: BuildStep = BuildStep.EXECUTE, env: XYZEnvironment | None = None):
     """Prints the result of building a given XYZ file to the provided step, for debugging only.
 
     Args:
       string:
-        The XYZ string to evalaute, interpreted as a file.
+        The XYZ source to evalaute.
       env:
         The optional XYZEnvironment, to provide external values to the global scope.
     """
-    file = StringIO(string)
     tokens = tokenize(file)
     if isinstance(tokens, Error):
         tokens.print()

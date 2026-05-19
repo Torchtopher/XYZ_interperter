@@ -5,14 +5,13 @@ The main logic of the interpreter.
 from types import FunctionType
 import xyz.parser.ast as AST
 import numbers
-from xyz.error import Error, Span
+from xyz.error import Error, Span, XYZSource
 from xyz.interpreter.types import XYZType, Scope, is_num, is_int, truthy, equals, can_concat, printable_type
 from xyz.interpreter.error import (
         OperationTypeError, LoopRangeError, ZeroStepError, CallSourceError, IndexSourceError,
         MismatchedAssignError, GenericOperationError, BreakOutsideLoopError)
 from xyz.display import display
 from typing import NamedTuple, TypeAlias, assert_type
-from io import StringIO
 
 from xyz.interpreter.scoped_env import Scope
 from itertools import zip_longest
@@ -45,9 +44,9 @@ class XYZInterpreter:
     """
 
     debug: bool
-    source_file: StringIO
+    source_file: XYZSource
 
-    def __init__(self, GVT: Scope|None = None, source_file: StringIO = StringIO(""), debug: bool = False):
+    def __init__(self, GVT: Scope|None = None, source_file: XYZSource = XYZSource("", "<none>"), debug: bool = False):
         """Creates an instance of the XYZInterpreter
 
         Args:

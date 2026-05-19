@@ -4,7 +4,7 @@ The main process of the tokenizer.
 from typing import Generator
 
 from xyz.tokenizer.tokens import Token, TokenType, keywords
-from xyz.error import Error, Span
+from xyz.error import Error, Span, XYZSource
 from xyz.tokenizer.error import (
     InvalidTokenError, InvalidEscapeError,
     StringNewlineError, UnexpectedEndError)
@@ -17,7 +17,7 @@ def __peek(file) -> str:
     return nextchar
 
 
-def tokenize(file) -> list[Token] | Error:
+def tokenize(source: XYZSource) -> list[Token] | Error:
     """
     Tokenizes a string of XYZ code, returning a list of tokens or an error.
     """
@@ -44,13 +44,13 @@ def tokenize(file) -> list[Token] | Error:
                     else:
                         col += 1
                 case _ if char.isalpha() or char == "_":
-                    yield __tokenize_ident(file, line, col, char)
+                    yield __tokenize_ident(source, line, col, char)
                 case _ if char.isdecimal():
-                    yield __tokenize_number(file, line, col, char)
+                    yield __tokenize_number(source, line, col, char)
                 case '.':
                     nextchar: str = __peek(file)
                     if nextchar.isdecimal():
-                        yield __tokenize_number(file, line, col, char)
+                        yield __tokenize_number(source, line, col, char)
                     elif nextchar == '.':
                         file.read(1)
                         if __peek(file) == '.':
@@ -61,7 +61,7 @@ def tokenize(file) -> list[Token] | Error:
                     else:
                         yield Token(TokenType.DOT, span(1), None)
                 case "'" | '"':
-                    yield __tokenize_string(file, line, col, char)
+                    yield __tokenize_string(source, line, col, char)
                 case ';':
                     yield Token(TokenType.SEMICOLON, span(1), None)
                 case ',':
@@ -146,8 +146,8 @@ def tokenize(file) -> list[Token] | Error:
                     else:
                         yield Token(TokenType.OP_NOT, span(1), None)
                 case _:
-                    yield InvalidTokenError(span(1), file, char)
-    for token in tokenize_iter(file):
+                    yield InvalidTokenError(span(1), source, char)
+    for token in tokenize_iter(source.string):
         if isinstance(token, Error):
             return token
         tokens.append(token)
@@ -156,7 +156,8 @@ def tokenize(file) -> list[Token] | Error:
     return tokens
 
 
-def __tokenize_ident(file, line, col, char) -> Token:
+def __tokenize_ident(source, line, col, char) -> Token:
+    file = source.string
     ident: str = char
     end: int = col + 1
     while True:
@@ -172,7 +173,8 @@ def __tokenize_ident(file, line, col, char) -> Token:
         return Token(TokenType.IDENT, ((line, col), (line, end)), ident)
 
 
-def __tokenize_number(file, line, col, char) -> Token:
+def __tokenize_number(source, line, col, char) -> Token:
+    file = source.string
     frac: bool = char == '.'
     final: str = char
     end: int = col + 1
@@ -190,7 +192,8 @@ def __tokenize_number(file, line, col, char) -> Token:
     return Token(TokenType.FLOAT if frac else TokenType.INT, ((line, col), (line, end)), final)
 
 
-def __tokenize_string(file, line, col, char) -> Token | Error:
+def __tokenize_string(source, line, col, char) -> Token | Error:
+    file = source.string
     final: str = ""
     escape: bool = False
     end_line: int = line
@@ -199,14 +202,14 @@ def __tokenize_string(file, line, col, char) -> Token | Error:
     while True:
         nextchar: str = file.read(1)
         if nextchar == '':
-            return UnexpectedEndError(((line, col), (end_line, end_col+1)), file)
+            return UnexpectedEndError(((line, col), (end_line, end_col+1)), source)
         end_col += 1
         if skipwhite:
             if not nextchar.isspace():
                 skipwhite = False
             elif nextchar == "\n":
                 old_lc = (end_line, end_col-1)
-                return StringNewlineError((old_lc, (end_line + 1, 2)), file)
+                return StringNewlineError((old_lc, (end_line + 1, 2)), source)
 
         elif escape:
             escape = False
@@ -239,13 +242,13 @@ def __tokenize_string(file, line, col, char) -> Token | Error:
                     skipwhite = True
                 # not yet implemented from lua: \xXX, \ddd, \u{XXX}
                 case _:
-                    return InvalidEscapeError(((end_line, end_col-2), (end_line, end_col)), file, nextchar)
+                    return InvalidEscapeError(((end_line, end_col-2), (end_line, end_col)), source, nextchar)
         elif nextchar == char:
             break
         elif nextchar == '\\':
             escape = True
         elif nextchar == '\n':
-            return StringNewlineError(((end_line, end_col-1), (end_line + 1, 2)), file)
+            return StringNewlineError(((end_line, end_col-1), (end_line + 1, 2)), source)
         else:
             final += nextchar
     return Token(TokenType.STRING, ((line, col), (end_line, end_col)), final)

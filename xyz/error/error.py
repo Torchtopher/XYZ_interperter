@@ -3,7 +3,7 @@ Type definitions for error reporting.
 """
 
 from xyz.error.color import (style, NORMAL, BOLD, RED, WHITE, GRAY)
-from io import StringIO
+from xyz.error.source import XYZSource
 from sys import stderr
 
 """A position in a file in the form (line, column), for error reporting."""
@@ -22,11 +22,10 @@ class Error(Exception):
       span:
         The span of code causing the error.
       file:
-        The file in which the error occurred, as a StringIO.
-        Used to print the erroring code.
+        The XYZSource in which the error occurred.
     """
     span: Span
-    file: StringIO
+    file: XYZSource
     __text: str
 
     def __init__(self, span, file):
@@ -39,10 +38,10 @@ class Error(Exception):
         return "No error message"
 
     def __get_text(self):
-        original_pos: int = self.file.tell()
-        self.file.seek(0)
-        self.__text = self.file.read()
-        self.file.seek(original_pos)
+        original_pos: int = self.file.string.tell()
+        self.file.string.seek(0)
+        self.__text = self.file.string.read()
+        self.file.string.seek(original_pos)
 
     def print(self):
         """Prints the error to stderr, formatted like this:
@@ -56,7 +55,7 @@ class Error(Exception):
         """
         self.__get_text()
         print(style((BOLD, WHITE), "XYZ"), style(
-            (BOLD, RED), type(self).__name__), "@", "[%s:%s]" % self.span[0], file=stderr)
+            (BOLD, RED), type(self).__name__), "@", "%s[%s:%s]" % (self.file.name, *self.span[0]), file=stderr)
         print(self.message(), file=stderr)
         print(file=stderr)
         lines: list[str] = self.__text.splitlines()
@@ -70,7 +69,7 @@ class Error(Exception):
                 is_error: bool = c in range(start, end)
                 printed += style((BOLD if is_error else NORMAL,
                                  RED if is_error else WHITE), line[c])
-                under += style((BOLD, RED), "~") if is_error else (
+                under += style((BOLD, RED), line[c] if line[c].isspace() and line[c] != ' ' else "~") if is_error else (
                     line[c] if line[c].isspace() else " ")
             print(style((NORMAL, GRAY), str(i+1)), printed, file=stderr)
             print(" "*len(str(i+1)), under, file=stderr)
