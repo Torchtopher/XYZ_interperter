@@ -126,3 +126,30 @@ class MismatchedAssignError(Error):
     """
     def message(self) -> str:
         return "Mismatched variable and value lists"
+
+class BreakOutsideLoopError(Error):
+    """
+    An error returned when using the break keyword outside a loop.
+
+    For example,
+    let a = 1
+    break
+    let b = 2 
+    """
+    def message(self) -> str:
+        return "Can not call break outside a loop"
+
+class UncaughtPythonError(Error):
+    """An error returned when an unhandled Python exception is raised. 
+
+    Useful to not show the entire call stack, and provide context for the error and its location. 
+    For example there is no specific divide by 0 error in XYZ. Until that is implemented, 
+    this will be raised with the message "ZeroDivisionError('division by zero')", as well as the line number.
+    """
+
+    def __init__(self, span, file, orignal):
+        self.orig_error = orignal
+        Error.__init__(self, span, file)
+    
+    def message(self) -> str:
+        return f"Type: {type(self.orig_error).__name__} \nInfo: {str(self.orig_error)}"

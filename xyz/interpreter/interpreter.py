@@ -7,20 +7,24 @@ import xyz.parser.ast as AST
 import numbers
 from xyz.error import Error, Span
 from xyz.interpreter.types import XYZType, Scope, is_num, is_int, truthy, equals, can_concat, printable_type
-from xyz.interpreter.error import OperationTypeError, LoopRangeError, CallSourceError, IndexSourceError, MismatchedAssignError
+from xyz.interpreter.error import OperationTypeError, LoopRangeError, CallSourceError, IndexSourceError, MismatchedAssignError, UncaughtPythonError, BreakOutsideLoopError
 from xyz.display import display
 from typing import NamedTuple, TypeAlias, assert_type
 from io import StringIO
 
 from xyz.interpreter.scoped_env import Scope
 from itertools import zip_longest
+from xyz.error import Error
 
 class AccessorResult(NamedTuple):
     table: Scope | dict
     key: XYZType
 
 class BreakSignal(Exception):
-    pass
+    def __init__(self, span, *args):
+        super().__init__(*args)
+        self.span = span # hold span so we can report stray break locations
+    
 class ReturnValue(Exception):
     value: XYZType
     def __init__(self, value: XYZType):
@@ -84,6 +88,8 @@ class XYZInterpreter:
 
                 self.__execute_block(block)
                 return None
+            except BreakSignal as b: # if we have a break here, it means the user messed up
+                raise BreakOutsideLoopError(b.span, self.source_file)
             except ReturnValue as r:
                 return r.value
             finally:
@@ -306,7 +312,7 @@ class XYZInterpreter:
             self.eval_expression(stmnt)
 
         elif isinstance(stmnt, AST.Break):
-            raise BreakSignal
+            raise BreakSignal(stmnt.span)
 
         elif isinstance(stmnt, AST.Block):
             old_cvt = self.CVT
@@ -384,14 +390,35 @@ class XYZInterpreter:
 
         return AccessorResult(self.__ensure_index_source(access_expr), key)
 
+    # allow both expression evaluation and statements to throw UncaughtPythonError
+    # otherwise final `return 1/0` would still show call stack 
+    def __wrap_with_error(self, expression: AST.Expression=None, statement: AST.Statement=None):
+        assert expression is None or statement is None, "Can only evaluate one statement or expression"
+        span = None
+        if expression:
+            span = expression.span
+        else:
+            span = statement.span
+        
+        try:
+            if expression: return self.eval_expression(expression)
+            elif statement: return self.exec_statement(statement)
+        except (ReturnValue, BreakSignal, Error):
+            raise
+        except Exception as e:
+            raise UncaughtPythonError(span, self.source_file, e)
+        
 
     def __execute_block(self, ast: AST.Block):
         for statement in ast.statements:
-            self.exec_statement(statement)
+            self.__wrap_with_error(statement=statement)
+
+                
             if self.debug: print(self.GVT)
         if ast.return_statement != None:
-            raise ReturnValue(self.eval_expression(ast.return_statement))
+            raise ReturnValue(self.__wrap_with_error(expression=ast.return_statement))
 
+        
     def execute_ast(self, ast: AST.File) -> XYZType | Error:
         """The entrypoint for running an XYZ program, given the AST
 
@@ -405,5 +432,7 @@ class XYZInterpreter:
             self.__execute_block(ast)
         except ReturnValue as r:
             return r.value
+        except BreakSignal as b:
+            return BreakOutsideLoopError(b.span, self.source_file)
         except Error as e:
             return e
