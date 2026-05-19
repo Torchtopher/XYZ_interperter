@@ -7,7 +7,9 @@ import xyz.parser.ast as AST
 import numbers
 from xyz.error import Error, Span
 from xyz.interpreter.types import XYZType, Scope, is_num, is_int, truthy, equals, can_concat, printable_type
-from xyz.interpreter.error import OperationTypeError, LoopRangeError, CallSourceError, IndexSourceError, MismatchedAssignError, UncaughtPythonError, BreakOutsideLoopError
+from xyz.interpreter.error import (
+        OperationTypeError, LoopRangeError, ZeroStepError, CallSourceError, IndexSourceError,
+        MismatchedAssignError, GenericOperationError, BreakOutsideLoopError)
 from xyz.display import display
 from typing import NamedTuple, TypeAlias, assert_type
 from io import StringIO
@@ -259,6 +261,7 @@ class XYZInterpreter:
         Raises:
             MismatchedAssignError: When the variables and values of an assignment are not equal in length (i.e a, b = 1)
             LoopRangeError: If the start, stop or step of a loop is not an integer
+            ZeroStepError: If the step of a loop is zero
             BreakSignal: To signal the break out of a loop 
         """
         
@@ -295,6 +298,9 @@ class XYZInterpreter:
             start = self.__check_loop_range(stmnt.start)
             end = self.__check_loop_range(stmnt.end)
             step = self.__check_loop_range(stmnt.step)
+
+            if step == 0:
+                raise ZeroStepError(stmnt.span, self.source_file)
 
             for i in range(start, end, step):
                 old_cvt = self.CVT
@@ -406,7 +412,7 @@ class XYZInterpreter:
         except (ReturnValue, BreakSignal, Error):
             raise
         except Exception as e:
-            raise UncaughtPythonError(span, self.source_file, e)
+            raise GenericOperationError(span, self.source_file, e)
         
 
     def __execute_block(self, ast: AST.Block):

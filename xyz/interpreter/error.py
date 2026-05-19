@@ -32,6 +32,13 @@ class LoopRangeError(Error):
     def message(self) -> str:
         return "Loop range values must be integers"
 
+class ZeroStepError(Error):
+    """
+    An error returned when the step value for a for loop is zero.
+    """
+    def message(self) -> str:
+        return "Step value must not be zero"
+
 class CallSourceError(Error):
     """
     An error returned when a non-function value is called.
@@ -139,17 +146,22 @@ class BreakOutsideLoopError(Error):
     def message(self) -> str:
         return "Can not call break outside a loop"
 
-class UncaughtPythonError(Error):
-    """An error returned when an unhandled Python exception is raised. 
+class GenericOperationError(Error):
+    """An error returned when an unhandled Python exception is raised.
 
-    Useful to not show the entire call stack, and provide context for the error and its location. 
-    For example there is no specific divide by 0 error in XYZ. Until that is implemented, 
-    this will be raised with the message "ZeroDivisionError('division by zero')", as well as the line number.
+    These are implementation-specific errors originating from underlying Python operations, like dividing by zero
+    or shifting by a negative amount. In theory they would all at some point be replaced with proper errors.
+    This error exists to not show the entire call stack, and provide context for the error and its location.
+    
+    Attributes:
+      orig_error:
+        The underlying Python error.
     """
+    orig_error: Exception
 
     def __init__(self, span, file, orignal):
         self.orig_error = orignal
         Error.__init__(self, span, file)
     
     def message(self) -> str:
-        return f"Type: {type(self.orig_error).__name__} \nInfo: {str(self.orig_error)}"
+        return f"{type(self.orig_error).__name__}: {str(self.orig_error)}"
