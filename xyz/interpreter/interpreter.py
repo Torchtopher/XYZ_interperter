@@ -392,12 +392,12 @@ class XYZInterpreter:
 
     # allow both expression evaluation and statements to throw UncaughtPythonError
     # otherwise final `return 1/0` would still show call stack 
-    def __wrap_with_error(self, expression: AST.Expression=None, statement: AST.Statement=None):
+    def __wrap_with_error(self, expression: AST.Expression | None = None, statement: AST.Statement | None = None):
         assert expression is None or statement is None, "Can only evaluate one statement or expression"
         span = None
         if expression:
             span = expression.span
-        else:
+        elif statement:
             span = statement.span
         
         try:

@@ -1,13 +1,13 @@
 """
 The main process of the tokenizer.
 """
+from typing import Generator
 
 from xyz.tokenizer.tokens import Token, TokenType, keywords
 from xyz.error import Error, Span
 from xyz.tokenizer.error import (
     InvalidTokenError, InvalidEscapeError,
     StringNewlineError, UnexpectedEndError)
-from types import GeneratorType
 
 
 def __peek(file) -> str:
@@ -28,7 +28,7 @@ def tokenize(file) -> list[Token] | Error:
     def span(width: int) -> Span: # span helper
         return ((line, col), (line, col+width))
 
-    def tokenize_iter(file): # type: ignore
+    def tokenize_iter(file) -> Generator[Token | Error]:
         nonlocal line, col
 
         while True:
