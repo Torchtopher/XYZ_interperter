@@ -28,7 +28,7 @@ def tokenize(source: XYZSource) -> list[Token] | Error:
     def span(width: int) -> Span: # span helper
         return ((line, col), (line, col+width))
 
-    def tokenize_iter(file) -> Generator[Token | Error]:
+    def tokenize_iter(file) -> Generator[Token | Error, None, None]:
         nonlocal line, col
 
         while True:
